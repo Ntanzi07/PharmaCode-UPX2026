@@ -1,4 +1,4 @@
-module PharmaCode_UPX2026
+module github.com/Ntanzi07/PharmaCode-UPX2026
 
 go 1.26
 
