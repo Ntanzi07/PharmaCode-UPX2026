@@ -25,12 +25,12 @@ WHERE p.ean = $1
 `
 
 type GetDrugByEANRow struct {
-	Ean                string
-	RegistrationNumber string
-	BrandName          pgtype.Text
-	ActiveIngredient   string
-	Manufacturer       string
-	Description        string
+	Ean                string      `json:"ean"`
+	RegistrationNumber string      `json:"registration_number"`
+	BrandName          pgtype.Text `json:"brand_name"`
+	ActiveIngredient   string      `json:"active_ingredient"`
+	Manufacturer       string      `json:"manufacturer"`
+	Description        string      `json:"description"`
 }
 
 func (q *Queries) GetDrugByEAN(ctx context.Context, ean string) (GetDrugByEANRow, error) {

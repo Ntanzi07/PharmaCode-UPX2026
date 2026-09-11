@@ -9,18 +9,18 @@ import (
 )
 
 type Drug struct {
-	ID                 int64
-	RegistrationNumber string
-	BrandName          pgtype.Text
-	ActiveIngredient   string
-	Manufacturer       string
-	CreatedAt          pgtype.Timestamptz
+	ID                 int64              `json:"id"`
+	RegistrationNumber string             `json:"registration_number"`
+	BrandName          pgtype.Text        `json:"brand_name"`
+	ActiveIngredient   string             `json:"active_ingredient"`
+	Manufacturer       string             `json:"manufacturer"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 }
 
 type Package struct {
-	ID          int64
-	DrugID      int64
-	Ean         string
-	Description string
-	CreatedAt   pgtype.Timestamptz
+	ID          int64              `json:"id"`
+	DrugID      int64              `json:"drug_id"`
+	Ean         string             `json:"ean"`
+	Description string             `json:"description"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
 }
