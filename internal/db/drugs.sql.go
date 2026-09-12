@@ -46,3 +46,71 @@ func (q *Queries) GetDrugByEAN(ctx context.Context, ean string) (GetDrugByEANRow
 	)
 	return i, err
 }
+
+const getSummaryByEAN = `-- name: GetSummaryByEAN :one
+SELECT p.ean,
+       p.description,
+       d.registration_number,
+       d.brand_name,
+       d.active_ingredient,
+       d.manufacturer,
+       s.what_is_it_for,
+       s.posology,
+       s.adverse_effects,
+       s.drug_interactions,
+       s.contraindications,
+       s.side_effects,
+       s.when_to_seek_help,
+       s.mechanism_of_action,
+       s.storage,
+       s.source_url
+FROM drugs AS d
+         INNER JOIN packages AS p
+                    ON d.id = p.drug_id
+         LEFT JOIN summaries AS s
+                    ON d.id = s.drug_id AND s.reviewed_at IS NOT NULL
+WHERE p.ean = $1
+`
+
+type GetSummaryByEANRow struct {
+	Ean                string      `json:"ean"`
+	Description        string      `json:"description"`
+	RegistrationNumber string      `json:"registration_number"`
+	BrandName          pgtype.Text `json:"brand_name"`
+	ActiveIngredient   string      `json:"active_ingredient"`
+	Manufacturer       string      `json:"manufacturer"`
+	WhatIsItFor        pgtype.Text `json:"what_is_it_for"`
+	Posology           pgtype.Text `json:"posology"`
+	AdverseEffects     pgtype.Text `json:"adverse_effects"`
+	DrugInteractions   pgtype.Text `json:"drug_interactions"`
+	Contraindications  pgtype.Text `json:"contraindications"`
+	SideEffects        pgtype.Text `json:"side_effects"`
+	WhenToSeekHelp     pgtype.Text `json:"when_to_seek_help"`
+	MechanismOfAction  pgtype.Text `json:"mechanism_of_action"`
+	Storage            pgtype.Text `json:"storage"`
+	SourceUrl          pgtype.Text `json:"source_url"`
+}
+
+func (q *Queries) GetSummaryByEAN(ctx context.Context, ean string) (GetSummaryByEANRow, error) {
+	row := q.db.QueryRow(ctx, getSummaryByEAN, ean)
+	var i GetSummaryByEANRow
+	err := row.Scan(
+		&i.Ean,
+		&i.Description,
+		&i.RegistrationNumber,
+		&i.BrandName,
+		&i.ActiveIngredient,
+		&i.Manufacturer,
+		&i.WhatIsItFor,
+		&i.Posology,
+		&i.AdverseEffects,
+		&i.DrugInteractions,
+		&i.Contraindications,
+		&i.SideEffects,
+		&i.WhenToSeekHelp,
+		&i.MechanismOfAction,
+		&i.Storage,
+		&i.SourceUrl,
+	)
+	return i, err
+}

@@ -1,13 +1,16 @@
 package main
 
 import (
-	"PharmaCode_UPX2026/internal/config"
-	"PharmaCode_UPX2026/internal/db"
-	"PharmaCode_UPX2026/internal/handler"
 	"context"
 	"log"
 	"net/http"
+	"time"
 
+	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/config"
+	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/db"
+	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/handler"
+
+	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/router"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -16,18 +19,25 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ctx := context.Background()
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+
+	pool, err := pgxpool.New(context.Background(), cfg.DatabaseURL)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer pool.Close()
+
+	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := pool.Ping(pingCtx); err != nil {
+		log.Fatal(err)
+	}
 
 	queries := db.New(pool)
-
-	h := handler.NewDrugHandler(queries)
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("GET /drugs/ean/{ean}", h.GetByEAN)
+	drugH := handler.NewDrugHandler(queries)
+	r := router.New(drugH)
 
 	log.Printf("server listening on :%s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, mux); err != nil {
+	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {
 		log.Fatal(err)
 	}
 }
