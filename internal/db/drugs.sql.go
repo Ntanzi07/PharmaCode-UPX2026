@@ -49,6 +49,48 @@ func (q *Queries) DeleteDrug(ctx context.Context, id int64) (int64, error) {
 	return result.RowsAffected(), nil
 }
 
+const getDrugByEAN = `-- name: GetDrugByEAN :one
+SELECT p.ean,
+       d.id,
+       d.registration_number,
+       d.brand_name,
+       d.active_ingredient,
+       d.manufacturer,
+       d.updated_at,
+       d.created_at
+FROM drugs AS d
+         INNER JOIN packages AS p
+                    ON d.id = p.drug_id
+WHERE p.ean = $1
+`
+
+type GetDrugByEANRow struct {
+	Ean                string             `json:"ean"`
+	ID                 int64              `json:"id"`
+	RegistrationNumber string             `json:"registration_number"`
+	BrandName          pgtype.Text        `json:"brand_name"`
+	ActiveIngredient   string             `json:"active_ingredient"`
+	Manufacturer       string             `json:"manufacturer"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+}
+
+func (q *Queries) GetDrugByEAN(ctx context.Context, ean string) (GetDrugByEANRow, error) {
+	row := q.db.QueryRow(ctx, getDrugByEAN, ean)
+	var i GetDrugByEANRow
+	err := row.Scan(
+		&i.Ean,
+		&i.ID,
+		&i.RegistrationNumber,
+		&i.BrandName,
+		&i.ActiveIngredient,
+		&i.Manufacturer,
+		&i.UpdatedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getSummaryByEAN = `-- name: GetSummaryByEAN :one
 SELECT p.ean,
        p.description,

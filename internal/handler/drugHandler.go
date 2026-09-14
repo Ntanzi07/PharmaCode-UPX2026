@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/service"
 	"github.com/jackc/pgx/v5"
@@ -23,6 +24,19 @@ type createDrugRequest struct {
 	BrandName          string `json:"brand_name"`
 	ActiveIngredient   string `json:"active_ingredient"`
 	Manufacturer       string `json:"manufacturer"`
+}
+
+func drugRequestVerification(req createDrugRequest) (error error) {
+	if req.RegistrationNumber == "" {
+		return errors.New("registration number is required")
+	}
+	if req.ActiveIngredient == "" {
+		return errors.New("active ingredient is required")
+	}
+	if req.Manufacturer == "" {
+		return errors.New("manufacturer is required")
+	}
+	return nil
 }
 
 func (h *DrugHandler) GetSummaryByEAN(w http.ResponseWriter, r *http.Request) {
@@ -58,17 +72,9 @@ func (h *DrugHandler) CreateDrug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.RegistrationNumber == "" {
-		http.Error(w, "registration_number is required", http.StatusBadRequest)
-		return
-	}
-	if req.ActiveIngredient == "" {
-		http.Error(w, "active_ingredient is required", http.StatusBadRequest)
-		return
-	}
-	if req.Manufacturer == "" {
-		http.Error(w, "manufacturer is required", http.StatusBadRequest)
-		return
+	err := drugRequestVerification(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
 	id, err := h.service.Create(r.Context(), service.CreateDrugInput(req))
@@ -89,7 +95,42 @@ func (h *DrugHandler) CreateDrug(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// name: UpdateDrug :exec
+func (h *DrugHandler) UpdateDrug(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	if idStr == "" {
+		http.Error(w, "id is required", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	var req createDrugRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	err = drugRequestVerification(req)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	err = h.service.Update(r.Context(), id, service.CreateDrugInput(req))
+	if err != nil {
+		if errors.Is(err, service.ErrDuplicateRegistration) {
+			http.Error(w, "registration_number already exists", http.StatusConflict)
+			return
+		}
+		log.Printf("failed to create drug %s: %v", req.RegistrationNumber, err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNoContent)
+}
 
 // name: DeleteDrug :execrows
 

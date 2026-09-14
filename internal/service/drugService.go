@@ -47,10 +47,38 @@ func (s *DrugService) Create(ctx context.Context, in CreateDrugInput) (int64, er
 	return id, nil
 }
 
+func (s *DrugService) Update(ctx context.Context, id int64, in CreateDrugInput) error {
+	err := s.queries.UpdateDrug(ctx, db.UpdateDrugParams{
+		ID:                 id,
+		RegistrationNumber: in.RegistrationNumber,
+		BrandName: pgtype.Text{
+			String: in.BrandName,
+			Valid:  in.BrandName != "",
+		},
+		ActiveIngredient: in.ActiveIngredient,
+		Manufacturer:     in.Manufacturer,
+	})
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return ErrDuplicateRegistration
+		}
+	}
+	return err
+}
+
 func (s *DrugService) GetSummaryByEAN(ctx context.Context, ean string) (db.GetSummaryByEANRow, error) {
 	row, err := s.queries.GetSummaryByEAN(ctx, ean)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return db.GetSummaryByEANRow{}, ErrDrugNotFound
+	}
+	return row, err
+}
+
+func (s *DrugService) GetDrugByEAN(ctx context.Context, ean string) (db.GetDrugByEANRow, error) {
+	row, err := s.queries.GetDrugByEAN(ctx, ean)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return db.GetDrugByEANRow{}, ErrDrugNotFound
 	}
 	return row, err
 }

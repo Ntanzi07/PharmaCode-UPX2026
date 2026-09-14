@@ -49,3 +49,17 @@ FROM drugs AS d
          LEFT JOIN summaries AS s
                    ON d.id = s.drug_id AND s.reviewed_at IS NOT NULL
 WHERE p.ean = $1;
+
+-- name: GetDrugByEAN :one
+SELECT p.ean,
+       d.id,
+       d.registration_number,
+       d.brand_name,
+       d.active_ingredient,
+       d.manufacturer,
+       d.updated_at,
+       d.created_at
+FROM drugs AS d
+         INNER JOIN packages AS p
+                    ON d.id = p.drug_id
+WHERE p.ean = $1;
