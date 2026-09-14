@@ -37,8 +37,7 @@ func (s *DrugService) Create(ctx context.Context, in CreateDrugInput) (int64, er
 		Manufacturer:     in.Manufacturer,
 	})
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
 			return 0, ErrDuplicateRegistration
 		}
 		return 0, err
@@ -59,12 +58,22 @@ func (s *DrugService) Update(ctx context.Context, id int64, in CreateDrugInput) 
 		Manufacturer:     in.Manufacturer,
 	})
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
 			return ErrDuplicateRegistration
 		}
 	}
 	return err
+}
+
+func (s *DrugService) Delete(ctx context.Context, id int64) error {
+	rows, err := s.queries.DeleteDrug(ctx, id)
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrDrugNotFound
+	}
+	return nil
 }
 
 func (s *DrugService) GetSummaryByEAN(ctx context.Context, ean string) (db.GetSummaryByEANRow, error) {

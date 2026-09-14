@@ -40,7 +40,6 @@ func drugRequestVerification(req createDrugRequest) (error error) {
 }
 
 func (h *DrugHandler) GetSummaryByEAN(w http.ResponseWriter, r *http.Request) {
-
 	ean := r.PathValue("ean")
 	if ean == "" {
 		http.Error(w, "ean is required", http.StatusBadRequest)
@@ -132,6 +131,27 @@ func (h *DrugHandler) UpdateDrug(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// name: DeleteDrug :execrows
+func (h *DrugHandler) DeleteDrug(w http.ResponseWriter, r *http.Request) {
+	idStr := r.PathValue("id")
+	if idStr == "" {
+		http.Error(w, "id is required", http.StatusBadRequest)
+		return
+	}
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
 
-// name: ListDrugs :many
+	if err := h.service.Delete(r.Context(), id); err != nil {
+		if errors.Is(err, service.ErrDrugNotFound) {
+			http.Error(w, "drug not found", http.StatusNotFound)
+			return
+		}
+		log.Printf("failed to delete drug %d: %v", id, err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
