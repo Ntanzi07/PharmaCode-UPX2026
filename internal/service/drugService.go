@@ -84,6 +84,13 @@ func (s *DrugService) GetSummaryByEAN(ctx context.Context, ean string) (db.GetSu
 	return row, err
 }
 
+func (s *DrugService) ListDrugs(ctx context.Context, limit, offset int32) ([]db.ListDrugsRow, error) {
+	return s.queries.ListDrugs(ctx, db.ListDrugsParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+}
+
 func (s *DrugService) GetDrugByEAN(ctx context.Context, ean string) (db.GetDrugByEANRow, error) {
 	row, err := s.queries.GetDrugByEAN(ctx, ean)
 	if errors.Is(err, pgx.ErrNoRows) {

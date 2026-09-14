@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/db"
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/service"
 	"github.com/jackc/pgx/v5"
 )
@@ -24,6 +25,12 @@ type createDrugRequest struct {
 	BrandName          string `json:"brand_name"`
 	ActiveIngredient   string `json:"active_ingredient"`
 	Manufacturer       string `json:"manufacturer"`
+}
+
+type listResponse struct {
+	Data   any   `json:"data"`
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
 }
 
 func drugRequestVerification(req createDrugRequest) (error error) {
@@ -154,4 +161,51 @@ func (h *DrugHandler) DeleteDrug(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func (h *DrugHandler) ListDrugs(w http.ResponseWriter, r *http.Request) {
+	limit := int32(20)
+	if s := r.URL.Query().Get("limit"); s != "" {
+		v, err := strconv.ParseInt(s, 10, 32)
+		if err != nil || v <= 0 {
+			http.Error(w, "invalid limit", http.StatusBadRequest)
+			return
+		}
+		if v > 100 {
+			v = 100
+		}
+		limit = int32(v)
+	}
+
+	offset := int32(0)
+	if s := r.URL.Query().Get("offset"); s != "" {
+		v, err := strconv.ParseInt(s, 10, 32)
+		if err != nil || v < 0 {
+			http.Error(w, "invalid offset", http.StatusBadRequest)
+			return
+		}
+		offset = int32(v)
+	}
+
+	drugs, err := h.service.ListDrugs(r.Context(), limit, offset)
+	if err != nil {
+		log.Printf("failed to get the drug list: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if drugs == nil {
+		drugs = []db.ListDrugsRow{}
+	}
+
+	resp := listResponse{
+		Data:   drugs,
+		Limit:  limit,
+		Offset: offset,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		log.Printf("failed to encode response: %v", err)
+	}
 }
