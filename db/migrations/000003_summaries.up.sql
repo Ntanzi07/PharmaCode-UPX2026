@@ -15,6 +15,7 @@ CREATE TABLE summaries
     reviewed_by         TEXT,
     reviewed_at         TIMESTAMPTZ,
     created_at          TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at          TIMESTAMPTZ,
     CONSTRAINT fk_drug_id FOREIGN KEY (drug_id)
         REFERENCES drugs (id) ON DELETE CASCADE
 

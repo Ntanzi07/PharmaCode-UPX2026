@@ -11,40 +11,42 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getDrugByEAN = `-- name: GetDrugByEAN :one
-SELECT p.ean,
-       d.registration_number,
-       d.brand_name,
-       d.active_ingredient,
-       d.manufacturer,
-       p.description
-FROM drugs AS d
-         INNER JOIN packages AS p
-                    ON d.id = p.drug_id
-WHERE p.ean = $1
+const createDrug = `-- name: CreateDrug :one
+INSERT INTO drugs (registration_number, brand_name, active_ingredient, manufacturer)
+VALUES ($1, $2, $3, $4) RETURNING id
 `
 
-type GetDrugByEANRow struct {
-	Ean                string      `json:"ean"`
+type CreateDrugParams struct {
 	RegistrationNumber string      `json:"registration_number"`
 	BrandName          pgtype.Text `json:"brand_name"`
 	ActiveIngredient   string      `json:"active_ingredient"`
 	Manufacturer       string      `json:"manufacturer"`
-	Description        string      `json:"description"`
 }
 
-func (q *Queries) GetDrugByEAN(ctx context.Context, ean string) (GetDrugByEANRow, error) {
-	row := q.db.QueryRow(ctx, getDrugByEAN, ean)
-	var i GetDrugByEANRow
-	err := row.Scan(
-		&i.Ean,
-		&i.RegistrationNumber,
-		&i.BrandName,
-		&i.ActiveIngredient,
-		&i.Manufacturer,
-		&i.Description,
+func (q *Queries) CreateDrug(ctx context.Context, arg CreateDrugParams) (int64, error) {
+	row := q.db.QueryRow(ctx, createDrug,
+		arg.RegistrationNumber,
+		arg.BrandName,
+		arg.ActiveIngredient,
+		arg.Manufacturer,
 	)
-	return i, err
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const deleteDrug = `-- name: DeleteDrug :execrows
+DELETE
+FROM drugs
+WHERE id = $1
+`
+
+func (q *Queries) DeleteDrug(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteDrug, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const getSummaryByEAN = `-- name: GetSummaryByEAN :one
@@ -68,7 +70,7 @@ FROM drugs AS d
          INNER JOIN packages AS p
                     ON d.id = p.drug_id
          LEFT JOIN summaries AS s
-                    ON d.id = s.drug_id AND s.reviewed_at IS NOT NULL
+                   ON d.id = s.drug_id AND s.reviewed_at IS NOT NULL
 WHERE p.ean = $1
 `
 
@@ -113,4 +115,85 @@ func (q *Queries) GetSummaryByEAN(ctx context.Context, ean string) (GetSummaryBy
 		&i.SourceUrl,
 	)
 	return i, err
+}
+
+const listDrugs = `-- name: ListDrugs :many
+SELECT id,
+       registration_number,
+       brand_name,
+       active_ingredient,
+       manufacturer,
+       updated_at
+FROM drugs
+ORDER BY brand_name NULLS FIRST LIMIT $1
+OFFSET $2
+`
+
+type ListDrugsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListDrugsRow struct {
+	ID                 int64              `json:"id"`
+	RegistrationNumber string             `json:"registration_number"`
+	BrandName          pgtype.Text        `json:"brand_name"`
+	ActiveIngredient   string             `json:"active_ingredient"`
+	Manufacturer       string             `json:"manufacturer"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) ListDrugs(ctx context.Context, arg ListDrugsParams) ([]ListDrugsRow, error) {
+	rows, err := q.db.Query(ctx, listDrugs, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListDrugsRow
+	for rows.Next() {
+		var i ListDrugsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RegistrationNumber,
+			&i.BrandName,
+			&i.ActiveIngredient,
+			&i.Manufacturer,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateDrug = `-- name: UpdateDrug :exec
+UPDATE drugs
+SET registration_number = $2,
+    brand_name          = $3,
+    active_ingredient   = $4,
+    manufacturer        = $5
+WHERE id = $1
+`
+
+type UpdateDrugParams struct {
+	ID                 int64       `json:"id"`
+	RegistrationNumber string      `json:"registration_number"`
+	BrandName          pgtype.Text `json:"brand_name"`
+	ActiveIngredient   string      `json:"active_ingredient"`
+	Manufacturer       string      `json:"manufacturer"`
+}
+
+func (q *Queries) UpdateDrug(ctx context.Context, arg UpdateDrugParams) error {
+	_, err := q.db.Exec(ctx, updateDrug,
+		arg.ID,
+		arg.RegistrationNumber,
+		arg.BrandName,
+		arg.ActiveIngredient,
+		arg.Manufacturer,
+	)
+	return err
 }

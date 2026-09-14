@@ -9,8 +9,7 @@ import (
 func New(drugH *handler.DrugHandler) http.Handler {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /drugs/ean/{ean}", drugH.GetByEAN)
-	mux.HandleFunc("GET /summary/ean/{ean}", drugH.GetSummaryByEAN)
+	mux.HandleFunc("GET /drugs/ean/{ean}", drugH.GetSummaryByEAN)
 
 	return mux
 }

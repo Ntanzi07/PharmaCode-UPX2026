@@ -5,6 +5,7 @@ CREATE TABLE packages
     ean         VARCHAR(13) UNIQUE        NOT NULL,
     description TEXT                      NOT NULL,
     created_at  TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at  TIMESTAMPTZ,
 
     CONSTRAINT fk_drug_id
         FOREIGN KEY (drug_id)

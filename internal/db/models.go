@@ -15,6 +15,7 @@ type Drug struct {
 	ActiveIngredient   string             `json:"active_ingredient"`
 	Manufacturer       string             `json:"manufacturer"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Package struct {
@@ -23,6 +24,7 @@ type Package struct {
 	Ean         string             `json:"ean"`
 	Description string             `json:"description"`
 	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Summary struct {
@@ -41,4 +43,5 @@ type Summary struct {
 	ReviewedBy        pgtype.Text        `json:"reviewed_by"`
 	ReviewedAt        pgtype.Timestamptz `json:"reviewed_at"`
 	CreatedAt         pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
 }
