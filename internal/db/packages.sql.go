@@ -7,14 +7,15 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createPackage = `-- name: CreatePackage :one
 INSERT INTO packages (drug_id, ean, description)
 SELECT d.id, $2, $3
 FROM drugs d
-WHERE d.registration_number = $1
-    RETURNING id
+WHERE d.registration_number = $1 RETURNING id
 `
 
 type CreatePackageParams struct {
@@ -28,4 +29,177 @@ func (q *Queries) CreatePackage(ctx context.Context, arg CreatePackageParams) (i
 	var id int64
 	err := row.Scan(&id)
 	return id, err
+}
+
+const deletePackage = `-- name: DeletePackage :execrows
+DELETE
+FROM packages
+WHERE id = $1
+`
+
+func (q *Queries) DeletePackage(ctx context.Context, id int64) (int64, error) {
+	result, err := q.db.Exec(ctx, deletePackage, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getPackageById = `-- name: GetPackageById :one
+SELECT id,
+       drug_id,
+       ean,
+       description,
+       updated_at
+FROM packages
+WHERE id = $1
+`
+
+type GetPackageByIdRow struct {
+	ID          int64              `json:"id"`
+	DrugID      int64              `json:"drug_id"`
+	Ean         string             `json:"ean"`
+	Description string             `json:"description"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) GetPackageById(ctx context.Context, id int64) (GetPackageByIdRow, error) {
+	row := q.db.QueryRow(ctx, getPackageById, id)
+	var i GetPackageByIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.DrugID,
+		&i.Ean,
+		&i.Description,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const listPackages = `-- name: ListPackages :many
+SELECT id,
+       drug_id,
+       ean,
+       description,
+       updated_at
+FROM packages
+ORDER BY ean LIMIT $1
+OFFSET $2
+`
+
+type ListPackagesParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListPackagesRow struct {
+	ID          int64              `json:"id"`
+	DrugID      int64              `json:"drug_id"`
+	Ean         string             `json:"ean"`
+	Description string             `json:"description"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) ListPackages(ctx context.Context, arg ListPackagesParams) ([]ListPackagesRow, error) {
+	rows, err := q.db.Query(ctx, listPackages, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPackagesRow
+	for rows.Next() {
+		var i ListPackagesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DrugID,
+			&i.Ean,
+			&i.Description,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPackagesByDrugID = `-- name: ListPackagesByDrugID :many
+SELECT id,
+       drug_id,
+       ean,
+       description,
+       updated_at
+FROM packages
+WHERE drug_id = $1
+ORDER BY ean LIMIT $2
+OFFSET $3
+`
+
+type ListPackagesByDrugIDParams struct {
+	DrugID int64 `json:"drug_id"`
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListPackagesByDrugIDRow struct {
+	ID          int64              `json:"id"`
+	DrugID      int64              `json:"drug_id"`
+	Ean         string             `json:"ean"`
+	Description string             `json:"description"`
+	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+}
+
+func (q *Queries) ListPackagesByDrugID(ctx context.Context, arg ListPackagesByDrugIDParams) ([]ListPackagesByDrugIDRow, error) {
+	rows, err := q.db.Query(ctx, listPackagesByDrugID, arg.DrugID, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPackagesByDrugIDRow
+	for rows.Next() {
+		var i ListPackagesByDrugIDRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.DrugID,
+			&i.Ean,
+			&i.Description,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updatePackage = `-- name: UpdatePackage :exec
+UPDATE packages
+SET drug_id     = $2,
+    ean         = $3,
+    description = $4,
+    updated_at  = NOW()
+WHERE id = $1
+`
+
+type UpdatePackageParams struct {
+	ID          int64  `json:"id"`
+	DrugID      int64  `json:"drug_id"`
+	Ean         string `json:"ean"`
+	Description string `json:"description"`
+}
+
+func (q *Queries) UpdatePackage(ctx context.Context, arg UpdatePackageParams) error {
+	_, err := q.db.Exec(ctx, updatePackage,
+		arg.ID,
+		arg.DrugID,
+		arg.Ean,
+		arg.Description,
+	)
+	return err
 }

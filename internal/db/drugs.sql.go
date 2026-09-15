@@ -217,7 +217,8 @@ UPDATE drugs
 SET registration_number = $2,
     brand_name          = $3,
     active_ingredient   = $4,
-    manufacturer        = $5
+    manufacturer        = $5,
+    updated_at          = NOW()
 WHERE id = $1
 `
 

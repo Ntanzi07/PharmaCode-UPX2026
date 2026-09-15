@@ -53,7 +53,7 @@ func (h *DrugHandler) GetSummaryByEAN(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	summary, err := h.service.GetSummaryByEAN(r.Context(), ean)
+	summary, err := h.service.GetSummaryByEANService(r.Context(), ean)
 	if errors.Is(err, pgx.ErrNoRows) {
 		http.Error(w, "ean not found", http.StatusNotFound)
 		return
@@ -83,7 +83,7 @@ func (h *DrugHandler) CreateDrug(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 	}
 
-	id, err := h.service.Create(r.Context(), service.CreateDrugInput(req))
+	id, err := h.service.CreateDrugService(r.Context(), service.CreateDrugInput(req))
 	if err != nil {
 		if errors.Is(err, service.ErrDuplicateRegistration) {
 			http.Error(w, "registration_number already exists", http.StatusConflict)
@@ -124,7 +124,7 @@ func (h *DrugHandler) UpdateDrug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.service.Update(r.Context(), id, service.CreateDrugInput(req))
+	err = h.service.UpdateDrugService(r.Context(), id, service.CreateDrugInput(req))
 	if err != nil {
 		if errors.Is(err, service.ErrDuplicateRegistration) {
 			http.Error(w, "registration_number already exists", http.StatusConflict)
@@ -150,7 +150,7 @@ func (h *DrugHandler) DeleteDrug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := h.service.Delete(r.Context(), id); err != nil {
+	if err := h.service.DeleteDrugService(r.Context(), id); err != nil {
 		if errors.Is(err, service.ErrDrugNotFound) {
 			http.Error(w, "drug not found", http.StatusNotFound)
 			return
@@ -187,7 +187,7 @@ func (h *DrugHandler) ListDrugs(w http.ResponseWriter, r *http.Request) {
 		offset = int32(v)
 	}
 
-	drugs, err := h.service.ListDrugs(r.Context(), limit, offset)
+	drugs, err := h.service.ListDrugsService(r.Context(), limit, offset)
 	if err != nil {
 		log.Printf("failed to get the drug list: %v", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)

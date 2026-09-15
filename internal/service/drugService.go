@@ -26,7 +26,7 @@ type CreateDrugInput struct {
 	Manufacturer       string
 }
 
-func (s *DrugService) Create(ctx context.Context, in CreateDrugInput) (int64, error) {
+func (s *DrugService) CreateDrugService(ctx context.Context, in CreateDrugInput) (int64, error) {
 	id, err := s.queries.CreateDrug(ctx, db.CreateDrugParams{
 		RegistrationNumber: in.RegistrationNumber,
 		BrandName: pgtype.Text{
@@ -37,7 +37,8 @@ func (s *DrugService) Create(ctx context.Context, in CreateDrugInput) (int64, er
 		Manufacturer:     in.Manufacturer,
 	})
 	if err != nil {
-		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return 0, ErrDuplicateRegistration
 		}
 		return 0, err
@@ -46,7 +47,7 @@ func (s *DrugService) Create(ctx context.Context, in CreateDrugInput) (int64, er
 	return id, nil
 }
 
-func (s *DrugService) Update(ctx context.Context, id int64, in CreateDrugInput) error {
+func (s *DrugService) UpdateDrugService(ctx context.Context, id int64, in CreateDrugInput) error {
 	err := s.queries.UpdateDrug(ctx, db.UpdateDrugParams{
 		ID:                 id,
 		RegistrationNumber: in.RegistrationNumber,
@@ -58,14 +59,15 @@ func (s *DrugService) Update(ctx context.Context, id int64, in CreateDrugInput) 
 		Manufacturer:     in.Manufacturer,
 	})
 	if err != nil {
-		if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok && pgErr.Code == "23505" {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return ErrDuplicateRegistration
 		}
 	}
 	return err
 }
 
-func (s *DrugService) Delete(ctx context.Context, id int64) error {
+func (s *DrugService) DeleteDrugService(ctx context.Context, id int64) error {
 	rows, err := s.queries.DeleteDrug(ctx, id)
 	if err != nil {
 		return err
@@ -76,7 +78,14 @@ func (s *DrugService) Delete(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *DrugService) GetSummaryByEAN(ctx context.Context, ean string) (db.GetSummaryByEANRow, error) {
+func (s *DrugService) ListDrugsService(ctx context.Context, limit, offset int32) ([]db.ListDrugsRow, error) {
+	return s.queries.ListDrugs(ctx, db.ListDrugsParams{
+		Limit:  limit,
+		Offset: offset,
+	})
+}
+
+func (s *DrugService) GetSummaryByEANService(ctx context.Context, ean string) (db.GetSummaryByEANRow, error) {
 	row, err := s.queries.GetSummaryByEAN(ctx, ean)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return db.GetSummaryByEANRow{}, ErrDrugNotFound
@@ -84,14 +93,7 @@ func (s *DrugService) GetSummaryByEAN(ctx context.Context, ean string) (db.GetSu
 	return row, err
 }
 
-func (s *DrugService) ListDrugs(ctx context.Context, limit, offset int32) ([]db.ListDrugsRow, error) {
-	return s.queries.ListDrugs(ctx, db.ListDrugsParams{
-		Limit:  limit,
-		Offset: offset,
-	})
-}
-
-func (s *DrugService) GetDrugByEAN(ctx context.Context, ean string) (db.GetDrugByEANRow, error) {
+func (s *DrugService) GetDrugByEANService(ctx context.Context, ean string) (db.GetDrugByEANRow, error) {
 	row, err := s.queries.GetDrugByEAN(ctx, ean)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return db.GetDrugByEANRow{}, ErrDrugNotFound
