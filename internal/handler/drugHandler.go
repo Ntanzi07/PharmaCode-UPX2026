@@ -9,7 +9,6 @@ import (
 
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/db"
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/service"
-	"github.com/jackc/pgx/v5"
 )
 
 type DrugHandler struct {
@@ -54,7 +53,7 @@ func (h *DrugHandler) GetSummaryByEAN(w http.ResponseWriter, r *http.Request) {
 	}
 
 	summary, err := h.service.GetSummaryByEANService(r.Context(), ean)
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, service.ErrDrugNotFound) {
 		http.Error(w, "ean not found", http.StatusNotFound)
 		return
 	}
@@ -81,6 +80,7 @@ func (h *DrugHandler) CreateDrug(w http.ResponseWriter, r *http.Request) {
 	err := drugRequestVerification(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
 	}
 
 	id, err := h.service.CreateDrugService(r.Context(), service.CreateDrugInput(req))
@@ -126,15 +126,18 @@ func (h *DrugHandler) UpdateDrug(w http.ResponseWriter, r *http.Request) {
 
 	err = h.service.UpdateDrugService(r.Context(), id, service.CreateDrugInput(req))
 	if err != nil {
+		if errors.Is(err, service.ErrDrugNotFound) {
+			http.Error(w, "drug not found", http.StatusNotFound)
+			return
+		}
 		if errors.Is(err, service.ErrDuplicateRegistration) {
 			http.Error(w, "registration_number already exists", http.StatusConflict)
 			return
 		}
-		log.Printf("failed to create drug %s: %v", req.RegistrationNumber, err)
+		log.Printf("failed to update drug %s: %v", req.RegistrationNumber, err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusNoContent)
 }
 

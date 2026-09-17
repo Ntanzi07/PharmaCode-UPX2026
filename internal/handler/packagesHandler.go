@@ -169,6 +169,10 @@ func (h *PackageHandler) UpdatePackage(w http.ResponseWriter, r *http.Request) {
 
 	err = h.service.Update(r.Context(), id, service.UpdatePackageInput(req))
 	if err != nil {
+		if errors.Is(err, service.ErrPackageNotFound) {
+			http.Error(w, "package not found", http.StatusNotFound)
+			return
+		}
 		if errors.Is(err, service.ErrDuplicateEAN) {
 			http.Error(w, "ean already exists", http.StatusConflict)
 			return

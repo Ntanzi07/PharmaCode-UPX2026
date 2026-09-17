@@ -178,7 +178,7 @@ func (q *Queries) ListPackagesByDrugID(ctx context.Context, arg ListPackagesByDr
 	return items, nil
 }
 
-const updatePackage = `-- name: UpdatePackage :exec
+const updatePackage = `-- name: UpdatePackage :execrows
 UPDATE packages
 SET drug_id     = $2,
     ean         = $3,
@@ -194,12 +194,15 @@ type UpdatePackageParams struct {
 	Description string `json:"description"`
 }
 
-func (q *Queries) UpdatePackage(ctx context.Context, arg UpdatePackageParams) error {
-	_, err := q.db.Exec(ctx, updatePackage,
+func (q *Queries) UpdatePackage(ctx context.Context, arg UpdatePackageParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updatePackage,
 		arg.ID,
 		arg.DrugID,
 		arg.Ean,
 		arg.Description,
 	)
-	return err
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

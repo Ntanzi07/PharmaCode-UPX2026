@@ -11,10 +11,10 @@ import (
 )
 
 type PackageService struct {
-	queries *db.Queries
+	queries PackageQuerier
 }
 
-func NewPackageService(q *db.Queries) *PackageService {
+func NewPackageService(q PackageQuerier) *PackageService {
 	return &PackageService{queries: q}
 }
 
@@ -50,7 +50,7 @@ func (s *PackageService) Create(ctx context.Context, in CreatePackageInput) (int
 }
 
 func (s *PackageService) Update(ctx context.Context, id int64, in UpdatePackageInput) error {
-	err := s.queries.UpdatePackage(ctx, db.UpdatePackageParams{
+	rows, err := s.queries.UpdatePackage(ctx, db.UpdatePackageParams{
 		ID:          id,
 		DrugID:      in.DrugID,
 		Ean:         in.Ean,
@@ -62,6 +62,9 @@ func (s *PackageService) Update(ctx context.Context, id int64, in UpdatePackageI
 			return ErrDuplicateEAN
 		}
 		return err
+	}
+	if rows == 0 {
+		return ErrPackageNotFound
 	}
 	return nil
 }

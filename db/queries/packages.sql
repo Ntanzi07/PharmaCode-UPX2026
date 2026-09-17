@@ -4,7 +4,7 @@ SELECT d.id, $2, $3
 FROM drugs d
 WHERE d.registration_number = $1 RETURNING id;
 
--- name: UpdatePackage :exec
+-- name: UpdatePackage :execrows
 UPDATE packages
 SET drug_id     = $2,
     ean         = $3,

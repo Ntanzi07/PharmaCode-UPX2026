@@ -2,7 +2,7 @@
 INSERT INTO drugs (registration_number, brand_name, active_ingredient, manufacturer)
 VALUES ($1, $2, $3, $4) RETURNING id;
 
--- name: UpdateDrug :exec
+-- name: UpdateDrug :execrows
 UPDATE drugs
 SET registration_number = $2,
     brand_name          = $3,

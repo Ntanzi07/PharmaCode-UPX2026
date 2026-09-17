@@ -12,10 +12,10 @@ import (
 )
 
 type SummaryService struct {
-	queries *db.Queries
+	queries SummaryQuerier
 }
 
-func NewSummaryService(q *db.Queries) *SummaryService {
+func NewSummaryService(q SummaryQuerier) *SummaryService {
 	return &SummaryService{queries: q}
 }
 
@@ -46,7 +46,6 @@ type UpdateSummaryInput struct {
 	SourceURL         string
 }
 
-// optionalText converts an empty string into a NULL column value.
 func optionalText(s string) pgtype.Text {
 	return pgtype.Text{String: s, Valid: s != ""}
 }

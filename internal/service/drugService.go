@@ -12,10 +12,10 @@ import (
 )
 
 type DrugService struct {
-	queries *db.Queries
+	queries DrugQuerier
 }
 
-func NewDrugService(q *db.Queries) *DrugService {
+func NewDrugService(q DrugQuerier) *DrugService {
 	return &DrugService{queries: q}
 }
 
@@ -48,7 +48,7 @@ func (s *DrugService) CreateDrugService(ctx context.Context, in CreateDrugInput)
 }
 
 func (s *DrugService) UpdateDrugService(ctx context.Context, id int64, in CreateDrugInput) error {
-	err := s.queries.UpdateDrug(ctx, db.UpdateDrugParams{
+	rows, err := s.queries.UpdateDrug(ctx, db.UpdateDrugParams{
 		ID:                 id,
 		RegistrationNumber: in.RegistrationNumber,
 		BrandName: pgtype.Text{
@@ -63,8 +63,12 @@ func (s *DrugService) UpdateDrugService(ctx context.Context, id int64, in Create
 		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return ErrDuplicateRegistration
 		}
+		return err
 	}
-	return err
+	if rows == 0 {
+		return ErrDrugNotFound
+	}
+	return nil
 }
 
 func (s *DrugService) DeleteDrugService(ctx context.Context, id int64) error {
