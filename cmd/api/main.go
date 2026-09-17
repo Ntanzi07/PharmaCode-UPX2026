@@ -37,11 +37,13 @@ func main() {
 
 	drugSvc := service.NewDrugService(queries)
 	packageSvc := service.NewPackageService(queries)
+	summarySvc := service.NewSummaryService(queries)
 
 	drugH := handler.NewDrugHandler(drugSvc)
 	packageH := handler.NewPackageHandler(packageSvc)
+	summaryH := handler.NewSummaryHandler(summarySvc)
 
-	r := router.New(drugH, packageH)
+	r := router.New(drugH, packageH, summaryH)
 
 	log.Printf("server listening on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, r); err != nil {

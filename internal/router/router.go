@@ -6,7 +6,7 @@ import (
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/handler"
 )
 
-func New(drugH *handler.DrugHandler, packageH *handler.PackageHandler) http.Handler {
+func New(drugH *handler.DrugHandler, packageH *handler.PackageHandler, summaryH *handler.SummaryHandler) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /drugs", drugH.ListDrugs)
@@ -20,6 +20,14 @@ func New(drugH *handler.DrugHandler, packageH *handler.PackageHandler) http.Hand
 	mux.HandleFunc("GET /packages/{id}", packageH.GetPackageByID)
 	mux.HandleFunc("PUT /packages/{id}", packageH.UpdatePackage)
 	mux.HandleFunc("DELETE /packages/{id}", packageH.DeletePackage)
+
+	mux.HandleFunc("GET /summaries", summaryH.ListSummaries)
+	mux.HandleFunc("POST /summaries", summaryH.CreateSummary)
+	mux.HandleFunc("GET /summaries/{id}", summaryH.GetSummaryByID)
+	mux.HandleFunc("GET /summaries/drug/{drugID}", summaryH.GetSummaryByDrugID)
+	mux.HandleFunc("PUT /summaries/{id}", summaryH.UpdateSummary)
+	mux.HandleFunc("PATCH /summaries/{id}/review", summaryH.ReviewSummary)
+	mux.HandleFunc("DELETE /summaries/{id}", summaryH.DeleteSummary)
 
 	return mux
 }
