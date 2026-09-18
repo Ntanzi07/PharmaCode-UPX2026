@@ -8,3 +8,5 @@ Dockerfile
 .dockerignore
 docker-compose.yml
 README.md
+# o front tem o proprio Dockerfile em web/
+web/

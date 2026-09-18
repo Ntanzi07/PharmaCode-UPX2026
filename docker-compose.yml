@@ -50,5 +50,16 @@ services:
     ports:
       - "${API_PORT:-8080}:${PORT:-8080}"
 
+  web:
+    build:
+      context: ./web
+    container_name: bula_web
+    restart: unless-stopped
+    depends_on:
+      - api
+    # o nginx do container repassa /api/* para http://api:8080
+    ports:
+      - "${WEB_PORT:-3000}:80"
+
 volumes:
   pgdata:

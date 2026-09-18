@@ -30,8 +30,13 @@ func New(drugH *handler.DrugHandler, packageH *handler.PackageHandler, summaryH 
 	mux.HandleFunc("PATCH /summaries/{id}/review", summaryH.ReviewSummary)
 	mux.HandleFunc("DELETE /summaries/{id}", summaryH.DeleteSummary)
 
-	// Swagger UI: http://localhost:<porta>/swagger/index.html
-	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
+	// Swagger UI: http://localhost:<porta>/docs
+	redirectToDocs := func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/docs/index.html", http.StatusMovedPermanently)
+	}
+	mux.HandleFunc("GET /docs", redirectToDocs)
+	mux.HandleFunc("GET /docs/{$}", redirectToDocs)
+	mux.Handle("GET /docs/", httpSwagger.WrapHandler)
 
 	return mux
 }
