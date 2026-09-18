@@ -31,6 +31,18 @@ type updatePackageRequest struct {
 	Description string `json:"description"`
 }
 
+// CreatePackage godoc
+// @Summary      Cadastra uma embalagem (EAN) de um remédio
+// @Tags         packages
+// @Accept       json
+// @Produce      json
+// @Param        body  body      createPackageRequest  true  "Dados da embalagem"
+// @Success      201   {object}  idResponse
+// @Failure      400   {string}  string  "json inválido ou campo obrigatório faltando"
+// @Failure      404   {string}  string  "drug not found for this registration_number"
+// @Failure      409   {string}  string  "ean already exists"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /packages [post]
 func (h *PackageHandler) CreatePackage(w http.ResponseWriter, r *http.Request) {
 	var req createPackageRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -73,6 +85,16 @@ func (h *PackageHandler) CreatePackage(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ListPackages godoc
+// @Summary      Lista embalagens (paginado)
+// @Tags         packages
+// @Produce      json
+// @Param        limit   query     int     false  "Itens por página (padrão 20, máx 100)"
+// @Param        offset  query     int     false  "Quantos itens pular (padrão 0)"
+// @Success      200  {object}  listResponse{data=[]db.ListPackagesRow}
+// @Failure      400  {string}  string  "invalid limit / invalid offset"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /packages [get]
 func (h *PackageHandler) ListPackages(w http.ResponseWriter, r *http.Request) {
 	limit := int32(20)
 	if s := r.URL.Query().Get("limit"); s != "" {
@@ -117,6 +139,16 @@ func (h *PackageHandler) ListPackages(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetPackageByID godoc
+// @Summary      Busca uma embalagem pelo ID
+// @Tags         packages
+// @Produce      json
+// @Param        id   path      int     true  "ID da embalagem"
+// @Success      200  {object}  db.GetPackageByIdRow
+// @Failure      400  {string}  string  "invalid id"
+// @Failure      404  {string}  string  "package not found"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /packages/{id} [get]
 func (h *PackageHandler) GetPackageByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -141,6 +173,18 @@ func (h *PackageHandler) GetPackageByID(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// UpdatePackage godoc
+// @Summary      Atualiza uma embalagem
+// @Tags         packages
+// @Accept       json
+// @Param        id   path      int     true  "ID da embalagem"
+// @Param        body  body      updatePackageRequest  true  "Dados da embalagem"
+// @Success      204
+// @Failure      400  {string}  string  "id ou json inválido"
+// @Failure      404  {string}  string  "package not found"
+// @Failure      409  {string}  string  "ean already exists"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /packages/{id} [put]
 func (h *PackageHandler) UpdatePackage(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -185,6 +229,15 @@ func (h *PackageHandler) UpdatePackage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// DeletePackage godoc
+// @Summary      Remove uma embalagem
+// @Tags         packages
+// @Param        id   path      int     true  "ID da embalagem"
+// @Success      204
+// @Failure      400  {string}  string  "invalid id"
+// @Failure      404  {string}  string  "package not found"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /packages/{id} [delete]
 func (h *PackageHandler) DeletePackage(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {

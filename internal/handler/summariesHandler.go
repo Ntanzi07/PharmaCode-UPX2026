@@ -64,6 +64,18 @@ func summaryRequiredFields(whatIsItFor, posology, sourceURL string) error {
 	return nil
 }
 
+// CreateSummary godoc
+// @Summary      Cadastra a bula simplificada de um remédio
+// @Tags         summaries
+// @Accept       json
+// @Produce      json
+// @Param        body  body      createSummaryRequest  true  "Resumo da bula"
+// @Success      201   {object}  idResponse
+// @Failure      400   {string}  string  "json inválido ou campo obrigatório faltando"
+// @Failure      404   {string}  string  "drug not found for this drug_id"
+// @Failure      409   {string}  string  "this drug already has a summary"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /summaries [post]
 func (h *SummaryHandler) CreateSummary(w http.ResponseWriter, r *http.Request) {
 	var req createSummaryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -102,6 +114,16 @@ func (h *SummaryHandler) CreateSummary(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ListSummaries godoc
+// @Summary      Lista bulas simplificadas (paginado)
+// @Tags         summaries
+// @Produce      json
+// @Param        limit   query     int     false  "Itens por página (padrão 20, máx 100)"
+// @Param        offset  query     int     false  "Quantos itens pular (padrão 0)"
+// @Success      200  {object}  listResponse{data=[]db.ListSummariesRow}
+// @Failure      400  {string}  string  "invalid limit / invalid offset"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /summaries [get]
 func (h *SummaryHandler) ListSummaries(w http.ResponseWriter, r *http.Request) {
 	limit := int32(20)
 	if s := r.URL.Query().Get("limit"); s != "" {
@@ -146,6 +168,16 @@ func (h *SummaryHandler) ListSummaries(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// GetSummaryByID godoc
+// @Summary      Busca uma bula simplificada pelo ID
+// @Tags         summaries
+// @Produce      json
+// @Param        id   path      int     true  "ID do resumo"
+// @Success      200  {object}  db.GetSummaryByIDRow
+// @Failure      400  {string}  string  "invalid id"
+// @Failure      404  {string}  string  "summary not found"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /summaries/{id} [get]
 func (h *SummaryHandler) GetSummaryByID(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -170,6 +202,16 @@ func (h *SummaryHandler) GetSummaryByID(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+// GetSummaryByDrugID godoc
+// @Summary      Busca a bula simplificada de um remédio
+// @Tags         summaries
+// @Produce      json
+// @Param        drugID  path      int     true  "ID do remédio"
+// @Success      200  {object}  db.GetSummaryByDrugIDRow
+// @Failure      400  {string}  string  "invalid drug id"
+// @Failure      404  {string}  string  "summary not found"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /summaries/drug/{drugID} [get]
 func (h *SummaryHandler) GetSummaryByDrugID(w http.ResponseWriter, r *http.Request) {
 	drugID, err := strconv.ParseInt(r.PathValue("drugID"), 10, 64)
 	if err != nil {
@@ -194,6 +236,17 @@ func (h *SummaryHandler) GetSummaryByDrugID(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+// UpdateSummary godoc
+// @Summary      Atualiza uma bula simplificada
+// @Tags         summaries
+// @Accept       json
+// @Param        id   path      int     true  "ID do resumo"
+// @Param        body  body      updateSummaryRequest  true  "Resumo da bula"
+// @Success      204
+// @Failure      400  {string}  string  "id ou json inválido / campo obrigatório faltando"
+// @Failure      404  {string}  string  "summary not found"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /summaries/{id} [put]
 func (h *SummaryHandler) UpdateSummary(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -225,6 +278,17 @@ func (h *SummaryHandler) UpdateSummary(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// ReviewSummary godoc
+// @Summary      Marca uma bula simplificada como revisada
+// @Tags         summaries
+// @Accept       json
+// @Param        id   path      int     true  "ID do resumo"
+// @Param        body  body      reviewSummaryRequest  true  "Quem revisou"
+// @Success      204
+// @Failure      400  {string}  string  "id ou json inválido / reviewed_by is required"
+// @Failure      404  {string}  string  "summary not found"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /summaries/{id}/review [patch]
 func (h *SummaryHandler) ReviewSummary(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {
@@ -256,6 +320,15 @@ func (h *SummaryHandler) ReviewSummary(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// DeleteSummary godoc
+// @Summary      Remove uma bula simplificada
+// @Tags         summaries
+// @Param        id   path      int     true  "ID do resumo"
+// @Success      204
+// @Failure      400  {string}  string  "invalid id"
+// @Failure      404  {string}  string  "summary not found"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /summaries/{id} [delete]
 func (h *SummaryHandler) DeleteSummary(w http.ResponseWriter, r *http.Request) {
 	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
 	if err != nil {

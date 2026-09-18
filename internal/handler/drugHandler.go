@@ -26,6 +26,11 @@ type createDrugRequest struct {
 	Manufacturer       string `json:"manufacturer"`
 }
 
+// idResponse documenta o corpo {"id": 123} retornado nos endpoints de criação.
+type idResponse struct {
+	ID int64 `json:"id" example:"1"`
+}
+
 type listResponse struct {
 	Data   any   `json:"data"`
 	Limit  int32 `json:"limit"`
@@ -45,6 +50,17 @@ func drugRequestVerification(req createDrugRequest) (error error) {
 	return nil
 }
 
+// GetSummaryByEAN godoc
+// @Summary      Busca a bula simplificada pelo EAN
+// @Description  Retorna os dados do remédio e o resumo da bula a partir do código de barras da caixa
+// @Tags         drugs
+// @Produce      json
+// @Param        ean  path      string  true  "Código EAN da embalagem"
+// @Success      200  {object}  db.GetSummaryByEANRow
+// @Failure      400  {string}  string  "ean is required"
+// @Failure      404  {string}  string  "ean not found"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /drugs/ean/{ean} [get]
 func (h *DrugHandler) GetSummaryByEAN(w http.ResponseWriter, r *http.Request) {
 	ean := r.PathValue("ean")
 	if ean == "" {
@@ -70,6 +86,17 @@ func (h *DrugHandler) GetSummaryByEAN(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// CreateDrug godoc
+// @Summary      Cadastra um remédio
+// @Tags         drugs
+// @Accept       json
+// @Produce      json
+// @Param        body  body      createDrugRequest  true  "Dados do remédio"
+// @Success      201   {object}  idResponse
+// @Failure      400   {string}  string  "json inválido ou campo obrigatório faltando"
+// @Failure      409   {string}  string  "registration_number already exists"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /drugs [post]
 func (h *DrugHandler) CreateDrug(w http.ResponseWriter, r *http.Request) {
 	var req createDrugRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -101,6 +128,18 @@ func (h *DrugHandler) CreateDrug(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// UpdateDrug godoc
+// @Summary      Atualiza um remédio
+// @Tags         drugs
+// @Accept       json
+// @Param        id   path      int     true  "ID do remédio"
+// @Param        body  body      createDrugRequest  true  "Dados do remédio"
+// @Success      204
+// @Failure      400  {string}  string  "id ou json inválido"
+// @Failure      404  {string}  string  "drug not found"
+// @Failure      409  {string}  string  "registration_number already exists"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /drugs/{id} [put]
 func (h *DrugHandler) UpdateDrug(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	if idStr == "" {
@@ -141,6 +180,15 @@ func (h *DrugHandler) UpdateDrug(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// DeleteDrug godoc
+// @Summary      Remove um remédio
+// @Tags         drugs
+// @Param        id   path      int     true  "ID do remédio"
+// @Success      204
+// @Failure      400  {string}  string  "invalid id"
+// @Failure      404  {string}  string  "drug not found"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /drugs/{id} [delete]
 func (h *DrugHandler) DeleteDrug(w http.ResponseWriter, r *http.Request) {
 	idStr := r.PathValue("id")
 	if idStr == "" {
@@ -166,6 +214,16 @@ func (h *DrugHandler) DeleteDrug(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// ListDrugs godoc
+// @Summary      Lista remédios (paginado)
+// @Tags         drugs
+// @Produce      json
+// @Param        limit   query     int     false  "Itens por página (padrão 20, máx 100)"
+// @Param        offset  query     int     false  "Quantos itens pular (padrão 0)"
+// @Success      200  {object}  listResponse{data=[]db.ListDrugsRow}
+// @Failure      400  {string}  string  "invalid limit / invalid offset"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /drugs [get]
 func (h *DrugHandler) ListDrugs(w http.ResponseWriter, r *http.Request) {
 	limit := int32(20)
 	if s := r.URL.Query().Get("limit"); s != "" {

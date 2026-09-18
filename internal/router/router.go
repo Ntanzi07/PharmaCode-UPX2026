@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/handler"
+	httpSwagger "github.com/swaggo/http-swagger/v2"
 )
 
 func New(drugH *handler.DrugHandler, packageH *handler.PackageHandler, summaryH *handler.SummaryHandler) http.Handler {
@@ -28,6 +29,9 @@ func New(drugH *handler.DrugHandler, packageH *handler.PackageHandler, summaryH 
 	mux.HandleFunc("PUT /summaries/{id}", summaryH.UpdateSummary)
 	mux.HandleFunc("PATCH /summaries/{id}/review", summaryH.ReviewSummary)
 	mux.HandleFunc("DELETE /summaries/{id}", summaryH.DeleteSummary)
+
+	// Swagger UI: http://localhost:<porta>/swagger/index.html
+	mux.Handle("GET /swagger/", httpSwagger.WrapHandler)
 
 	return mux
 }

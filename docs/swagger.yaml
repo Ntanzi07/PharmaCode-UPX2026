@@ -1,0 +1,819 @@
+basePath: /
+definitions:
+  GetPackageByIdRow:
+    properties:
+      description:
+        type: string
+      drug_id:
+        type: integer
+      ean:
+        type: string
+      id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  GetSummaryByDrugIDRow:
+    properties:
+      adverse_effects:
+        type: string
+      contraindications:
+        type: string
+      drug_id:
+        type: integer
+      drug_interactions:
+        type: string
+      id:
+        type: integer
+      mechanism_of_action:
+        type: string
+      posology:
+        type: string
+      reviewed_at:
+        type: string
+      reviewed_by:
+        type: string
+      side_effects:
+        type: string
+      source_url:
+        type: string
+      storage:
+        type: string
+      updated_at:
+        type: string
+      what_is_it_for:
+        type: string
+      when_to_seek_help:
+        type: string
+    type: object
+  GetSummaryByEANRow:
+    properties:
+      active_ingredient:
+        type: string
+      adverse_effects:
+        type: string
+      brand_name:
+        type: string
+      contraindications:
+        type: string
+      description:
+        type: string
+      drug_interactions:
+        type: string
+      ean:
+        type: string
+      manufacturer:
+        type: string
+      mechanism_of_action:
+        type: string
+      posology:
+        type: string
+      registration_number:
+        type: string
+      side_effects:
+        type: string
+      source_url:
+        type: string
+      storage:
+        type: string
+      what_is_it_for:
+        type: string
+      when_to_seek_help:
+        type: string
+    type: object
+  GetSummaryByIDRow:
+    properties:
+      adverse_effects:
+        type: string
+      contraindications:
+        type: string
+      drug_id:
+        type: integer
+      drug_interactions:
+        type: string
+      id:
+        type: integer
+      mechanism_of_action:
+        type: string
+      posology:
+        type: string
+      reviewed_at:
+        type: string
+      reviewed_by:
+        type: string
+      side_effects:
+        type: string
+      source_url:
+        type: string
+      storage:
+        type: string
+      updated_at:
+        type: string
+      what_is_it_for:
+        type: string
+      when_to_seek_help:
+        type: string
+    type: object
+  ListDrugsRow:
+    properties:
+      active_ingredient:
+        type: string
+      brand_name:
+        type: string
+      id:
+        type: integer
+      manufacturer:
+        type: string
+      registration_number:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  ListPackagesRow:
+    properties:
+      description:
+        type: string
+      drug_id:
+        type: integer
+      ean:
+        type: string
+      id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  ListSummariesRow:
+    properties:
+      active_ingredient:
+        type: string
+      brand_name:
+        type: string
+      drug_id:
+        type: integer
+      id:
+        type: integer
+      reviewed_at:
+        type: string
+      reviewed_by:
+        type: string
+      source_url:
+        type: string
+      updated_at:
+        type: string
+      what_is_it_for:
+        type: string
+    type: object
+  createDrugRequest:
+    properties:
+      active_ingredient:
+        type: string
+      brand_name:
+        type: string
+      manufacturer:
+        type: string
+      registration_number:
+        type: string
+    type: object
+  createPackageRequest:
+    properties:
+      description:
+        type: string
+      ean:
+        type: string
+      registration_number:
+        type: string
+    type: object
+  createSummaryRequest:
+    properties:
+      adverse_effects:
+        type: string
+      contraindications:
+        type: string
+      drug_id:
+        type: integer
+      drug_interactions:
+        type: string
+      mechanism_of_action:
+        type: string
+      posology:
+        type: string
+      side_effects:
+        type: string
+      source_url:
+        type: string
+      storage:
+        type: string
+      what_is_it_for:
+        type: string
+      when_to_seek_help:
+        type: string
+    type: object
+  idResponse:
+    properties:
+      id:
+        example: 1
+        type: integer
+    type: object
+  listResponse:
+    properties:
+      data: {}
+      limit:
+        type: integer
+      offset:
+        type: integer
+    type: object
+  reviewSummaryRequest:
+    properties:
+      reviewed_by:
+        type: string
+    type: object
+  updatePackageRequest:
+    properties:
+      description:
+        type: string
+      drug_id:
+        type: integer
+      ean:
+        type: string
+    type: object
+  updateSummaryRequest:
+    properties:
+      adverse_effects:
+        type: string
+      contraindications:
+        type: string
+      drug_interactions:
+        type: string
+      mechanism_of_action:
+        type: string
+      posology:
+        type: string
+      side_effects:
+        type: string
+      source_url:
+        type: string
+      storage:
+        type: string
+      what_is_it_for:
+        type: string
+      when_to_seek_help:
+        type: string
+    type: object
+info:
+  contact: {}
+  description: API que lê o código da caixa do remédio e retorna a bula simplificada.
+  title: PharmaCode API
+  version: "1.0"
+paths:
+  /drugs:
+    get:
+      parameters:
+      - description: Itens por página (padrão 20, máx 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Quantos itens pular (padrão 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/listResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/ListDrugsRow'
+                  type: array
+              type: object
+        "400":
+          description: invalid limit / invalid offset
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Lista remédios (paginado)
+      tags:
+      - drugs
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados do remédio
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/createDrugRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/idResponse'
+        "400":
+          description: json inválido ou campo obrigatório faltando
+          schema:
+            type: string
+        "409":
+          description: registration_number already exists
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Cadastra um remédio
+      tags:
+      - drugs
+  /drugs/{id}:
+    delete:
+      parameters:
+      - description: ID do remédio
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid id
+          schema:
+            type: string
+        "404":
+          description: drug not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Remove um remédio
+      tags:
+      - drugs
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do remédio
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Dados do remédio
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/createDrugRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: id ou json inválido
+          schema:
+            type: string
+        "404":
+          description: drug not found
+          schema:
+            type: string
+        "409":
+          description: registration_number already exists
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Atualiza um remédio
+      tags:
+      - drugs
+  /drugs/ean/{ean}:
+    get:
+      description: Retorna os dados do remédio e o resumo da bula a partir do código
+        de barras da caixa
+      parameters:
+      - description: Código EAN da embalagem
+        in: path
+        name: ean
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/GetSummaryByEANRow'
+        "400":
+          description: ean is required
+          schema:
+            type: string
+        "404":
+          description: ean not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Busca a bula simplificada pelo EAN
+      tags:
+      - drugs
+  /packages:
+    get:
+      parameters:
+      - description: Itens por página (padrão 20, máx 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Quantos itens pular (padrão 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/listResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/ListPackagesRow'
+                  type: array
+              type: object
+        "400":
+          description: invalid limit / invalid offset
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Lista embalagens (paginado)
+      tags:
+      - packages
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados da embalagem
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/createPackageRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/idResponse'
+        "400":
+          description: json inválido ou campo obrigatório faltando
+          schema:
+            type: string
+        "404":
+          description: drug not found for this registration_number
+          schema:
+            type: string
+        "409":
+          description: ean already exists
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Cadastra uma embalagem (EAN) de um remédio
+      tags:
+      - packages
+  /packages/{id}:
+    delete:
+      parameters:
+      - description: ID da embalagem
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid id
+          schema:
+            type: string
+        "404":
+          description: package not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Remove uma embalagem
+      tags:
+      - packages
+    get:
+      parameters:
+      - description: ID da embalagem
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/GetPackageByIdRow'
+        "400":
+          description: invalid id
+          schema:
+            type: string
+        "404":
+          description: package not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Busca uma embalagem pelo ID
+      tags:
+      - packages
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID da embalagem
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Dados da embalagem
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/updatePackageRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: id ou json inválido
+          schema:
+            type: string
+        "404":
+          description: package not found
+          schema:
+            type: string
+        "409":
+          description: ean already exists
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Atualiza uma embalagem
+      tags:
+      - packages
+  /summaries:
+    get:
+      parameters:
+      - description: Itens por página (padrão 20, máx 100)
+        in: query
+        name: limit
+        type: integer
+      - description: Quantos itens pular (padrão 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/listResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/ListSummariesRow'
+                  type: array
+              type: object
+        "400":
+          description: invalid limit / invalid offset
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Lista bulas simplificadas (paginado)
+      tags:
+      - summaries
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Resumo da bula
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/createSummaryRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/idResponse'
+        "400":
+          description: json inválido ou campo obrigatório faltando
+          schema:
+            type: string
+        "404":
+          description: drug not found for this drug_id
+          schema:
+            type: string
+        "409":
+          description: this drug already has a summary
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Cadastra a bula simplificada de um remédio
+      tags:
+      - summaries
+  /summaries/{id}:
+    delete:
+      parameters:
+      - description: ID do resumo
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid id
+          schema:
+            type: string
+        "404":
+          description: summary not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Remove uma bula simplificada
+      tags:
+      - summaries
+    get:
+      parameters:
+      - description: ID do resumo
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/GetSummaryByIDRow'
+        "400":
+          description: invalid id
+          schema:
+            type: string
+        "404":
+          description: summary not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Busca uma bula simplificada pelo ID
+      tags:
+      - summaries
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do resumo
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Resumo da bula
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/updateSummaryRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: id ou json inválido / campo obrigatório faltando
+          schema:
+            type: string
+        "404":
+          description: summary not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Atualiza uma bula simplificada
+      tags:
+      - summaries
+  /summaries/{id}/review:
+    patch:
+      consumes:
+      - application/json
+      parameters:
+      - description: ID do resumo
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Quem revisou
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/reviewSummaryRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: id ou json inválido / reviewed_by is required
+          schema:
+            type: string
+        "404":
+          description: summary not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Marca uma bula simplificada como revisada
+      tags:
+      - summaries
+  /summaries/drug/{drugID}:
+    get:
+      parameters:
+      - description: ID do remédio
+        in: path
+        name: drugID
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/GetSummaryByDrugIDRow'
+        "400":
+          description: invalid drug id
+          schema:
+            type: string
+        "404":
+          description: summary not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Busca a bula simplificada de um remédio
+      tags:
+      - summaries
+swagger: "2.0"

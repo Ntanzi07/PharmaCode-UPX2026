@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	_ "github.com/Ntanzi07/PharmaCode-UPX2026/docs"
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/config"
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/db"
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/handler"
@@ -15,6 +16,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// @title           PharmaCode API
+// @version         1.0
+// @description     API que lê o código da caixa do remédio e retorna a bula simplificada.
+// @BasePath        /
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
