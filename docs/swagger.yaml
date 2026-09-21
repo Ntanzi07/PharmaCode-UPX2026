@@ -201,6 +201,64 @@ definitions:
       what_is_it_for:
         type: string
     type: object
+  ListUsersRow:
+    properties:
+      active:
+        type: boolean
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      role:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  Role:
+    enum:
+    - editor
+    - reviewer
+    - admin
+    type: string
+    x-enum-comments:
+      RoleAdmin: + gerencia usuários
+      RoleEditor: cadastra e edita remédios, embalagens e bulas
+      RoleReviewer: + marca bula como revisada (farmacêutico)
+    x-enum-descriptions:
+    - cadastra e edita remédios, embalagens e bulas
+    - + marca bula como revisada (farmacêutico)
+    - + gerencia usuários
+    x-enum-varnames:
+    - RoleEditor
+    - RoleReviewer
+    - RoleAdmin
+  User:
+    properties:
+      email:
+        example: ana@farmacia.com
+        type: string
+      id:
+        example: 1
+        type: integer
+      name:
+        example: Ana Souza
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/Role'
+        example: reviewer
+    type: object
+  changePasswordRequest:
+    properties:
+      current_password:
+        type: string
+      new_password:
+        type: string
+    type: object
   createDrugRequest:
     properties:
       active_ingredient:
@@ -268,6 +326,26 @@ definitions:
       when_to_seek_help:
         type: string
     type: object
+  createUserRequest:
+    properties:
+      email:
+        example: ana@farmacia.com
+        type: string
+      name:
+        example: Ana Souza
+        type: string
+      password:
+        example: uma-senha-forte
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/Role'
+        enum:
+        - editor
+        - reviewer
+        - admin
+        example: reviewer
+    type: object
   idResponse:
     properties:
       id:
@@ -282,9 +360,19 @@ definitions:
       offset:
         type: integer
     type: object
-  reviewSummaryRequest:
+  loginRequest:
     properties:
-      reviewed_by:
+      email:
+        example: ana@farmacia.com
+        type: string
+      password:
+        example: uma-senha-forte
+        type: string
+    type: object
+  setPasswordRequest:
+    properties:
+      password:
+        example: nova-senha-forte
         type: string
     type: object
   updatePackageRequest:
@@ -341,12 +429,124 @@ definitions:
       when_to_seek_help:
         type: string
     type: object
+  updateUserRequest:
+    properties:
+      active:
+        example: true
+        type: boolean
+      email:
+        example: ana@farmacia.com
+        type: string
+      name:
+        example: Ana Souza
+        type: string
+      role:
+        allOf:
+        - $ref: '#/definitions/Role'
+        enum:
+        - editor
+        - reviewer
+        - admin
+        example: reviewer
+    type: object
 info:
   contact: {}
-  description: API que lê o código da caixa do remédio e retorna a bula simplificada.
+  description: |-
+    API que lê o código da caixa do remédio e retorna a bula simplificada.
+    Rota pública: GET /drugs/ean/{ean}. As demais exigem login (POST /auth/login grava um cookie de sessão).
   title: PharmaCode API
   version: "1.0"
 paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Confere email e senha e grava o cookie de sessão (HttpOnly). No
+        Swagger, depois do login as outras rotas passam a funcionar neste mesmo navegador.
+      parameters:
+      - description: Credenciais
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/loginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+        "400":
+          description: invalid json
+          schema:
+            type: string
+        "401":
+          description: invalid email or password
+          schema:
+            type: string
+        "429":
+          description: too many attempts
+          schema:
+            type: string
+      summary: Entra no painel
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      responses:
+        "204":
+          description: No Content
+      summary: Sai do painel
+      tags:
+      - auth
+  /auth/me:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/User'
+        "401":
+          description: authentication required
+          schema:
+            type: string
+      summary: Usuário logado
+      tags:
+      - auth
+  /auth/password:
+    put:
+      consumes:
+      - application/json
+      description: Exige a senha atual. As outras sessões do usuário são encerradas;
+        a atual continua.
+      parameters:
+      - description: Senha atual e nova (8 a 72 caracteres)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/changePasswordRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: senha nova fraca / json inválido
+          schema:
+            type: string
+        "401":
+          description: authentication required
+          schema:
+            type: string
+        "403":
+          description: current password is wrong
+          schema:
+            type: string
+      summary: Troca a própria senha
+      tags:
+      - auth
   /drugs:
     get:
       parameters:
@@ -838,25 +1038,27 @@ paths:
       - summaries
   /summaries/{id}/review:
     patch:
-      consumes:
-      - application/json
+      description: Quem revisou é o usuário logado (papel reviewer ou admin). Não
+        recebe corpo.
       parameters:
       - description: ID do resumo
         in: path
         name: id
         required: true
         type: integer
-      - description: Quem revisou
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/reviewSummaryRequest'
       responses:
         "204":
           description: No Content
         "400":
-          description: id ou json inválido / reviewed_by is required
+          description: invalid id
+          schema:
+            type: string
+        "401":
+          description: authentication required
+          schema:
+            type: string
+        "403":
+          description: insufficient permissions
           schema:
             type: string
         "404":
@@ -900,4 +1102,121 @@ paths:
       summary: Busca a bula simplificada de um remédio
       tags:
       - summaries
+  /users:
+    get:
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ListUsersRow'
+            type: array
+        "401":
+          description: authentication required
+          schema:
+            type: string
+        "403":
+          description: insufficient permissions
+          schema:
+            type: string
+      summary: Lista usuários do painel (admin)
+      tags:
+      - users
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Dados do usuário (senha de 8 a 72 caracteres)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/createUserRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/idResponse'
+        "400":
+          description: dados inválidos
+          schema:
+            type: string
+        "409":
+          description: email already registered
+          schema:
+            type: string
+      summary: Cria um usuário do painel (admin)
+      tags:
+      - users
+  /users/{id}:
+    put:
+      consumes:
+      - application/json
+      description: Desativar ou trocar o papel encerra as sessões do usuário. O último
+        admin ativo não pode ser rebaixado nem desativado.
+      parameters:
+      - description: ID do usuário
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Dados do usuário
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/updateUserRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: dados inválidos
+          schema:
+            type: string
+        "404":
+          description: user not found
+          schema:
+            type: string
+        "409":
+          description: email already registered / cannot remove the last active admin
+          schema:
+            type: string
+      summary: Atualiza nome, email, papel e status (admin)
+      tags:
+      - users
+  /users/{id}/password:
+    put:
+      consumes:
+      - application/json
+      description: Encerra todas as sessões do usuário.
+      parameters:
+      - description: ID do usuário
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Senha nova (8 a 72 caracteres)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/setPasswordRequest'
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: senha fraca
+          schema:
+            type: string
+        "404":
+          description: user not found
+          schema:
+            type: string
+      summary: Define uma senha nova para o usuário (admin)
+      tags:
+      - users
 swagger: "2.0"

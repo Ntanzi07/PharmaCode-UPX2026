@@ -4,6 +4,8 @@ import (
 	"errors"
 	"log"
 	"os"
+	"strconv"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -11,6 +13,15 @@ import (
 type Config struct {
 	DatabaseURL string
 	Port        string
+
+	// Sessão do painel
+	SessionTTL   time.Duration // SESSION_TTL, ex.: "12h" (padrão 12h)
+	CookieSecure bool          // COOKIE_SECURE=true em produção (HTTPS)
+
+	// Primeiro admin: só é usado se o banco ainda não tiver nenhum usuário.
+	AdminName     string
+	AdminEmail    string
+	AdminPassword string
 }
 
 func Load() (*Config, error) {
@@ -28,5 +39,29 @@ func Load() (*Config, error) {
 		port = "8080"
 	}
 
-	return &Config{DatabaseURL: dbURL, Port: port}, nil
+	ttl := 12 * time.Hour
+	if s := os.Getenv("SESSION_TTL"); s != "" {
+		d, err := time.ParseDuration(s)
+		if err != nil || d <= 0 {
+			return nil, errors.New("SESSION_TTL must be a duration like 12h or 30m")
+		}
+		ttl = d
+	}
+
+	secure, _ := strconv.ParseBool(os.Getenv("COOKIE_SECURE"))
+
+	adminName := os.Getenv("ADMIN_NAME")
+	if adminName == "" {
+		adminName = "Administrador"
+	}
+
+	return &Config{
+		DatabaseURL:   dbURL,
+		Port:          port,
+		SessionTTL:    ttl,
+		CookieSecure:  secure,
+		AdminName:     adminName,
+		AdminEmail:    os.Getenv("ADMIN_EMAIL"),
+		AdminPassword: os.Getenv("ADMIN_PASSWORD"),
+	}, nil
 }

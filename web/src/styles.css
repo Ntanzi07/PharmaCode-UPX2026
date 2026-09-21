@@ -225,3 +225,51 @@ fieldset.group > .hint { margin: 0 0 10px; font-size: 12px; }
   .container { padding: 16px; }
   .grid2 { grid-template-columns: 1fr; }
 }
+
+/* ---------- login e usuário ---------- */
+.loading.full { min-height: 100vh; display: grid; place-items: center; }
+.login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
+.login-card {
+  width: min(380px, 100%); display: flex; flex-direction: column; gap: 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 28px; box-shadow: var(--shadow);
+}
+.login-card p { margin: 0; }
+.login-brand { font-size: 20px; }
+button.block { width: 100%; padding: 10px; }
+.alert.info {
+  background: color-mix(in srgb, var(--primary) 12%, transparent);
+  color: var(--text);
+}
+
+.user-menu { margin-left: auto; position: relative; }
+.user-btn { display: flex; align-items: center; gap: 8px; border: 0; background: none; padding: 4px 6px; }
+.user-btn:hover { background: var(--bg); }
+.avatar {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--primary); color: #fff; font-size: 12px; font-weight: 700;
+}
+.menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 15; min-width: 230px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .25); padding: 6px; display: flex; flex-direction: column;
+}
+.menu-head { padding: 8px 10px 10px; border-bottom: 1px solid var(--border); margin-bottom: 4px; display: flex; flex-direction: column; gap: 4px; }
+.menu-head .badge { align-self: flex-start; }
+.menu > button { border: 0; text-align: left; background: none; padding: 8px 10px; }
+.menu > button:hover { background: var(--bg); }
+
+.badge.role-admin { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
+.badge.role-reviewer { background: var(--ok-bg); color: var(--ok-text); }
+.badge.role-editor { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+tr.inactive td:not(.actions) { opacity: .55; }
+.check { display: flex; gap: 8px; align-items: center; }
+.check input { width: auto; }
+.review-sign {
+  display: flex; flex-direction: column; gap: 2px; padding: 12px 14px;
+  border: 1px dashed var(--border); border-radius: 10px;
+}
+
+@media (max-width: 720px) {
+  .user-name { display: none; }
+}

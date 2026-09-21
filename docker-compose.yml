@@ -47,6 +47,13 @@ services:
       # e a porta e sempre 5432 (a 5433 so existe na sua maquina).
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable
       PORT: ${PORT:-8080}
+      # Login do painel
+      SESSION_TTL: ${SESSION_TTL:-12h}
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      # Primeiro admin: so e criado se o banco ainda nao tiver nenhum usuario
+      ADMIN_NAME: ${ADMIN_NAME:-Administrador}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     ports:
       - "${API_PORT:-8080}:${PORT:-8080}"
 

@@ -15,6 +15,142 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/auth/login": {
+            "post": {
+                "description": "Confere email e senha e grava o cookie de sessão (HttpOnly). No Swagger, depois do login as outras rotas passam a funcionar neste mesmo navegador.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Entra no painel",
+                "parameters": [
+                    {
+                        "description": "Credenciais",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/loginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/User"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid json",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "invalid email or password",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "429": {
+                        "description": "too many attempts",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Sai do painel",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
+        "/auth/me": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Usuário logado",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/User"
+                        }
+                    },
+                    "401": {
+                        "description": "authentication required",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/password": {
+            "put": {
+                "description": "Exige a senha atual. As outras sessões do usuário são encerradas; a atual continua.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Troca a própria senha",
+                "parameters": [
+                    {
+                        "description": "Senha atual e nova (8 a 72 caracteres)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/changePasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "senha nova fraca / json inválido",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "authentication required",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "current password is wrong",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/drugs": {
             "get": {
                 "produces": [
@@ -820,9 +956,7 @@ const docTemplate = `{
         },
         "/summaries/{id}/review": {
             "patch": {
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Quem revisou é o usuário logado (papel reviewer ou admin). Não recebe corpo.",
                 "tags": [
                     "summaries"
                 ],
@@ -834,15 +968,6 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "description": "Quem revisou",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/reviewSummaryRequest"
-                        }
                     }
                 ],
                 "responses": {
@@ -850,7 +975,19 @@ const docTemplate = `{
                         "description": "No Content"
                     },
                     "400": {
-                        "description": "id ou json inválido / reviewed_by is required",
+                        "description": "invalid id",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "authentication required",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "insufficient permissions",
                         "schema": {
                             "type": "string"
                         }
@@ -863,6 +1000,183 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Lista usuários do painel (admin)",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/ListUsersRow"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "authentication required",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "insufficient permissions",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Cria um usuário do painel (admin)",
+                "parameters": [
+                    {
+                        "description": "Dados do usuário (senha de 8 a 72 caracteres)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/createUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/idResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "dados inválidos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "email already registered",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}": {
+            "put": {
+                "description": "Desativar ou trocar o papel encerra as sessões do usuário. O último admin ativo não pode ser rebaixado nem desativado.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Atualiza nome, email, papel e status (admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID do usuário",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Dados do usuário",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/updateUserRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "dados inválidos",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "409": {
+                        "description": "email already registered / cannot remove the last active admin",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{id}/password": {
+            "put": {
+                "description": "Encerra todas as sessões do usuário.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Define uma senha nova para o usuário (admin)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "ID do usuário",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Senha nova (8 a 72 caracteres)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/setPasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "senha fraca",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "user not found",
                         "schema": {
                             "type": "string"
                         }
@@ -1177,6 +1491,91 @@ const docTemplate = `{
                 }
             }
         },
+        "ListUsersRow": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "email": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "Role": {
+            "type": "string",
+            "enum": [
+                "editor",
+                "reviewer",
+                "admin"
+            ],
+            "x-enum-comments": {
+                "RoleAdmin": "+ gerencia usuários",
+                "RoleEditor": "cadastra e edita remédios, embalagens e bulas",
+                "RoleReviewer": "+ marca bula como revisada (farmacêutico)"
+            },
+            "x-enum-descriptions": [
+                "cadastra e edita remédios, embalagens e bulas",
+                "+ marca bula como revisada (farmacêutico)",
+                "+ gerencia usuários"
+            ],
+            "x-enum-varnames": [
+                "RoleEditor",
+                "RoleReviewer",
+                "RoleAdmin"
+            ]
+        },
+        "User": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "ana@farmacia.com"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Ana Souza"
+                },
+                "role": {
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/Role"
+                        }
+                    ],
+                    "example": "reviewer"
+                }
+            }
+        },
+        "changePasswordRequest": {
+            "type": "object",
+            "properties": {
+                "current_password": {
+                    "type": "string"
+                },
+                "new_password": {
+                    "type": "string"
+                }
+            }
+        },
         "createDrugRequest": {
             "type": "object",
             "properties": {
@@ -1275,6 +1674,36 @@ const docTemplate = `{
                 }
             }
         },
+        "createUserRequest": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "ana@farmacia.com"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Ana Souza"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "uma-senha-forte"
+                },
+                "role": {
+                    "enum": [
+                        "editor",
+                        "reviewer",
+                        "admin"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/Role"
+                        }
+                    ],
+                    "example": "reviewer"
+                }
+            }
+        },
         "idResponse": {
             "type": "object",
             "properties": {
@@ -1296,11 +1725,25 @@ const docTemplate = `{
                 }
             }
         },
-        "reviewSummaryRequest": {
+        "loginRequest": {
             "type": "object",
             "properties": {
-                "reviewed_by": {
-                    "type": "string"
+                "email": {
+                    "type": "string",
+                    "example": "ana@farmacia.com"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "uma-senha-forte"
+                }
+            }
+        },
+        "setPasswordRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string",
+                    "example": "nova-senha-forte"
                 }
             }
         },
@@ -1381,6 +1824,36 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "updateUserRequest": {
+            "type": "object",
+            "properties": {
+                "active": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "email": {
+                    "type": "string",
+                    "example": "ana@farmacia.com"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Ana Souza"
+                },
+                "role": {
+                    "enum": [
+                        "editor",
+                        "reviewer",
+                        "admin"
+                    ],
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/Role"
+                        }
+                    ],
+                    "example": "reviewer"
+                }
+            }
         }
     }
 }`
@@ -1392,7 +1865,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "PharmaCode API",
-	Description:      "API que lê o código da caixa do remédio e retorna a bula simplificada.",
+	Description:      "API que lê o código da caixa do remédio e retorna a bula simplificada.\nRota pública: GET /drugs/ean/{ean}. As demais exigem login (POST /auth/login grava um cookie de sessão).",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

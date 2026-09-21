@@ -141,10 +141,13 @@ func (s *SummaryService) Update(ctx context.Context, id int64, in UpdateSummaryI
 	return nil
 }
 
-func (s *SummaryService) Review(ctx context.Context, id int64, reviewedBy string) error {
+// Review marca a bula como revisada pelo usuário logado (reviewer ou admin).
+// Guarda o id dele e o nome no momento da revisão.
+func (s *SummaryService) Review(ctx context.Context, id, reviewerID int64, reviewerName string) error {
 	rows, err := s.queries.ReviewSummary(ctx, db.ReviewSummaryParams{
-		ID:         id,
-		ReviewedBy: optionalText(reviewedBy),
+		ID:               id,
+		ReviewedBy:       optionalText(reviewerName),
+		ReviewedByUserID: pgtype.Int8{Int64: reviewerID, Valid: reviewerID != 0},
 	})
 	if err != nil {
 		return err

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/auth"
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/db"
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/service"
 )
@@ -54,10 +55,6 @@ type updateSummaryRequest struct {
 	// Versão da bula oficial que foi resumida
 	LeafletExpedient   string `json:"leaflet_expedient" example:"0123456/24-5"`
 	LeafletPublishedAt string `json:"leaflet_published_at" example:"2024-05-31" format:"date"`
-}
-
-type reviewSummaryRequest struct {
-	ReviewedBy string `json:"reviewed_by"`
 }
 
 // summaryRequiredFields validates the columns the table declares as NOT NULL.
@@ -298,12 +295,13 @@ func (h *SummaryHandler) UpdateSummary(w http.ResponseWriter, r *http.Request) {
 
 // ReviewSummary godoc
 // @Summary      Marca uma bula simplificada como revisada
+// @Description  Quem revisou é o usuário logado (papel reviewer ou admin). Não recebe corpo.
 // @Tags         summaries
-// @Accept       json
 // @Param        id   path      int     true  "ID do resumo"
-// @Param        body  body      reviewSummaryRequest  true  "Quem revisou"
 // @Success      204
-// @Failure      400  {string}  string  "id ou json inválido / reviewed_by is required"
+// @Failure      400  {string}  string  "invalid id"
+// @Failure      401  {string}  string  "authentication required"
+// @Failure      403  {string}  string  "insufficient permissions"
 // @Failure      404  {string}  string  "summary not found"
 // @Failure      500  {string}  string  "internal server error"
 // @Router       /summaries/{id}/review [patch]
@@ -314,18 +312,14 @@ func (h *SummaryHandler) ReviewSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req reviewSummaryRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+	// O middleware garante que existe usuário; a checagem é só defesa extra.
+	user, ok := auth.UserFrom(r.Context())
+	if !ok {
+		http.Error(w, "authentication required", http.StatusUnauthorized)
 		return
 	}
 
-	if req.ReviewedBy == "" {
-		http.Error(w, "reviewed_by is required", http.StatusBadRequest)
-		return
-	}
-
-	if err := h.service.Review(r.Context(), id, req.ReviewedBy); err != nil {
+	if err := h.service.Review(r.Context(), id, user.ID, user.Name); err != nil {
 		if errors.Is(err, service.ErrSummaryNotFound) {
 			http.Error(w, "summary not found", http.StatusNotFound)
 			return

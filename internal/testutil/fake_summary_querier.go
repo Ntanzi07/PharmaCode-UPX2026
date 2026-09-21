@@ -140,6 +140,9 @@ func (f *FakeSummaryQuerier) UpdateSummary(ctx context.Context, arg db.UpdateSum
 	row.SourceUrl = arg.SourceUrl
 	row.LeafletExpedient = arg.LeafletExpedient
 	row.LeafletPublishedAt = arg.LeafletPublishedAt
+	// como no banco: editar o texto invalida a revisão
+	row.ReviewedBy = pgtype.Text{}
+	row.ReviewedAt = pgtype.Timestamptz{}
 	f.rows[arg.ID] = row
 
 	return 1, nil

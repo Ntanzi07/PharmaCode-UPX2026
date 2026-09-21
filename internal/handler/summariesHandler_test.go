@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/auth"
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/db"
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/handler"
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/service"
@@ -208,13 +209,20 @@ func TestUpdateSummary(t *testing.T) {
 	})
 }
 
+// asReviewer simula o que o middleware faz: coloca o usuário logado no contexto.
+func asReviewer(req *http.Request) *http.Request {
+	return req.WithContext(auth.WithUser(req.Context(),
+		auth.User{ID: 7, Name: "Farmaceutica Responsavel", Role: auth.RoleReviewer}))
+}
+
 func TestReviewSummary(t *testing.T) {
-	t.Run("marca como revisado e devolve 204", func(t *testing.T) {
+	t.Run("marca como revisado pelo usuário logado e devolve 204", func(t *testing.T) {
 		h, fake := newTestHandler(t)
 		fake.Seed(db.GetSummaryByIDRow{ID: 1, DrugID: 1})
 
-		req := httptest.NewRequest(http.MethodPatch, "/summaries/1/review",
-			strings.NewReader(`{"reviewed_by":"Farmaceutica Responsavel"}`))
+		// o corpo é ignorado: quem revisou vem da sessão, não do JSON
+		req := asReviewer(httptest.NewRequest(http.MethodPatch, "/summaries/1/review",
+			strings.NewReader(`{"reviewed_by":"Outra Pessoa"}`)))
 		req.SetPathValue("id", "1")
 		rec := httptest.NewRecorder()
 
@@ -222,20 +230,20 @@ func TestReviewSummary(t *testing.T) {
 
 		require.Equal(t, http.StatusNoContent, rec.Code)
 		assert.Equal(t, "Farmaceutica Responsavel", fake.LastReviewParams.ReviewedBy.String)
+		assert.Equal(t, int64(7), fake.LastReviewParams.ReviewedByUserID.Int64)
 	})
 
-	t.Run("reviewed_by vazio devolve 400", func(t *testing.T) {
+	t.Run("sem usuário no contexto devolve 401", func(t *testing.T) {
 		h, fake := newTestHandler(t)
 		fake.Seed(db.GetSummaryByIDRow{ID: 1, DrugID: 1})
 
-		req := httptest.NewRequest(http.MethodPatch, "/summaries/1/review",
-			strings.NewReader(`{"reviewed_by":""}`))
+		req := httptest.NewRequest(http.MethodPatch, "/summaries/1/review", nil)
 		req.SetPathValue("id", "1")
 		rec := httptest.NewRecorder()
 
 		h.ReviewSummary(rec, req)
 
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
+		assert.Equal(t, http.StatusUnauthorized, rec.Code)
 		assert.Zero(t, fake.ReviewCalls)
 	})
 }
@@ -396,7 +404,7 @@ func TestErroInesperadoDoBancoVira500(t *testing.T) {
 			name:  "review",
 			setup: func(f *testutil.FakeSummaryQuerier) { f.ReviewErr = boom },
 			call: func(h *handler.SummaryHandler, rec *httptest.ResponseRecorder) {
-				req := httptest.NewRequest(http.MethodPatch, "/summaries/1/review", strings.NewReader(`{"reviewed_by":"x"}`))
+				req := asReviewer(httptest.NewRequest(http.MethodPatch, "/summaries/1/review", nil))
 				req.SetPathValue("id", "1")
 				h.ReviewSummary(rec, req)
 			},
@@ -451,14 +459,6 @@ func TestIDInvalidoDevolve400(t *testing.T) {
 		req := httptest.NewRequest(http.MethodDelete, "/summaries/abc", nil)
 		req.SetPathValue("id", "abc")
 		h.DeleteSummary(rec, req)
-		assert.Equal(t, http.StatusBadRequest, rec.Code)
-	})
-
-	t.Run("json quebrado no review", func(t *testing.T) {
-		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPatch, "/summaries/1/review", strings.NewReader(`{`))
-		req.SetPathValue("id", "1")
-		h.ReviewSummary(rec, req)
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 

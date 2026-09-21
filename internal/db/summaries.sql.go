@@ -302,19 +302,21 @@ func (q *Queries) ListSummaries(ctx context.Context, arg ListSummariesParams) ([
 
 const reviewSummary = `-- name: ReviewSummary :execrows
 UPDATE summaries
-SET reviewed_by = $2,
-    reviewed_at = NOW(),
-    updated_at  = NOW()
-WHERE id = $1
+SET reviewed_by         = $1,
+    reviewed_by_user_id = $2,
+    reviewed_at         = NOW(),
+    updated_at          = NOW()
+WHERE id = $3
 `
 
 type ReviewSummaryParams struct {
-	ID         int64       `json:"id"`
-	ReviewedBy pgtype.Text `json:"reviewed_by"`
+	ReviewedBy       pgtype.Text `json:"reviewed_by"`
+	ReviewedByUserID pgtype.Int8 `json:"reviewed_by_user_id"`
+	ID               int64       `json:"id"`
 }
 
 func (q *Queries) ReviewSummary(ctx context.Context, arg ReviewSummaryParams) (int64, error) {
-	result, err := q.db.Exec(ctx, reviewSummary, arg.ID, arg.ReviewedBy)
+	result, err := q.db.Exec(ctx, reviewSummary, arg.ReviewedBy, arg.ReviewedByUserID, arg.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -337,6 +339,9 @@ SET what_is_it_for       = $2,
     source_url           = $13,
     leaflet_expedient    = $14,
     leaflet_published_at = $15,
+    reviewed_by          = NULL,
+    reviewed_by_user_id  = NULL,
+    reviewed_at          = NULL,
     updated_at           = NOW()
 WHERE id = $1
 `
@@ -359,6 +364,8 @@ type UpdateSummaryParams struct {
 	LeafletPublishedAt pgtype.Date `json:"leaflet_published_at"`
 }
 
+// Mudou o texto, a revisão anterior deixa de valer: a bula sai do app até
+// um farmacêutico revisar de novo.
 func (q *Queries) UpdateSummary(ctx context.Context, arg UpdateSummaryParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateSummary,
 		arg.ID,

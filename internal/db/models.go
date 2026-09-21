@@ -34,6 +34,13 @@ type PackageEan struct {
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
+type Session struct {
+	TokenHash []byte             `json:"token_hash"`
+	UserID    int64              `json:"user_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+}
+
 type Summary struct {
 	ID                 int64              `json:"id"`
 	DrugID             int64              `json:"drug_id"`
@@ -55,4 +62,16 @@ type Summary struct {
 	Warnings           pgtype.Text        `json:"warnings"`
 	LeafletExpedient   pgtype.Text        `json:"leaflet_expedient"`
 	LeafletPublishedAt pgtype.Date        `json:"leaflet_published_at"`
+	ReviewedByUserID   pgtype.Int8        `json:"reviewed_by_user_id"`
+}
+
+type User struct {
+	ID           int64              `json:"id"`
+	Email        string             `json:"email"`
+	Name         string             `json:"name"`
+	PasswordHash string             `json:"password_hash"`
+	Role         string             `json:"role"`
+	Active       bool               `json:"active"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz `json:"updated_at"`
 }

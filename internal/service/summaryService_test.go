@@ -131,17 +131,18 @@ func TestSummaryService_Review(t *testing.T) {
 		seeded := fake.Seed(db.GetSummaryByIDRow{DrugID: 1})
 		svc := service.NewSummaryService(fake)
 
-		require.NoError(t, svc.Review(context.Background(), seeded.ID, "Farmaceutica Responsavel"))
+		require.NoError(t, svc.Review(context.Background(), seeded.ID, 7, "Farmaceutica Responsavel"))
 
 		assert.Equal(t, "Farmaceutica Responsavel", fake.LastReviewParams.ReviewedBy.String)
 		assert.True(t, fake.LastReviewParams.ReviewedBy.Valid)
+		assert.Equal(t, int64(7), fake.LastReviewParams.ReviewedByUserID.Int64)
 	})
 
 	t.Run("id inexistente vira ErrSummaryNotFound", func(t *testing.T) {
 		fake := testutil.NewFakeSummaryQuerier()
 		svc := service.NewSummaryService(fake)
 
-		err := svc.Review(context.Background(), 999, "alguem")
+		err := svc.Review(context.Background(), 999, 7, "alguem")
 
 		assert.ErrorIs(t, err, service.ErrSummaryNotFound)
 	})

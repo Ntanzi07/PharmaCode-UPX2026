@@ -8,6 +8,7 @@ import { usePaged, PAGE_SIZE } from '../components/usePaged'
 import { useToast } from '../components/Toast'
 import { fmtDate, fmtDay } from '../components/format'
 import { drugLabel, useDrugs } from '../components/drugs'
+import { useAuth } from '../components/auth'
 import DrugPicker from '../components/DrugPicker'
 
 const EMPTY: SummaryInput = {
@@ -20,6 +21,7 @@ type Editing = { mode: 'new' } | { mode: 'edit'; id: number } | { mode: 'review'
 
 export default function SummariesPage() {
   const { rows, loading, error, offset, setOffset, reload } = usePaged(api.summaries.list)
+  const { can } = useAuth()
   const [editing, setEditing] = useState<Editing | null>(null)
   const notify = useToast()
 
@@ -79,7 +81,11 @@ export default function SummariesPage() {
                 <td className="muted">{fmtDate(s.updated_at)}</td>
                 <td className="actions">
                   <button onClick={() => setEditing({ mode: 'edit', id: s.id })}>Editar</button>
-                  <button onClick={() => setEditing({ mode: 'review', item: s })}>Revisar</button>
+                  {can('reviewer') && (
+                    <button onClick={() => setEditing({ mode: 'review', item: s })}>
+                      {s.reviewed_by ? 'Revisar de novo' : 'Revisar'}
+                    </button>
+                  )}
                   <button className="danger" onClick={() => remove(s)}>Remover</button>
                 </td>
               </tr>
@@ -105,6 +111,7 @@ function SummaryForm({ id, onClose, onSaved }: { id?: number; onClose: () => voi
   const [drugId, setDrugId] = useState<number | ''>('')
   const [form, setForm] = useState<SummaryInput>(EMPTY)
   const [loading, setLoading] = useState(id !== undefined)
+  const [wasReviewed, setWasReviewed] = useState(false)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const notify = useToast()
@@ -116,6 +123,7 @@ function SummaryForm({ id, onClose, onSaved }: { id?: number; onClose: () => voi
       .get(id)
       .then((s) => {
         setDrugId(s.drug_id)
+        setWasReviewed(!!s.reviewed_at)
         const f = {
           ...EMPTY,
           source_url: s.source_url,
@@ -201,6 +209,11 @@ function SummaryForm({ id, onClose, onSaved }: { id?: number; onClose: () => voi
               </Field>
             </div>
           </fieldset>
+          {wasReviewed && (
+            <div className="alert info">
+              Esta bula já foi revisada. Ao salvar, a revisão é removida e ela sai do app até um farmacêutico revisar de novo.
+            </div>
+          )}
           {err && <div className="alert">{err}</div>}
           <div className="form-actions">
             <button type="button" onClick={onClose}>Cancelar</button>
@@ -213,7 +226,7 @@ function SummaryForm({ id, onClose, onSaved }: { id?: number; onClose: () => voi
 }
 
 function ReviewForm({ item, onClose, onSaved }: { item: SummaryListItem; onClose: () => void; onSaved: () => void }) {
-  const [by, setBy] = useState(item.reviewed_by ?? '')
+  const { user } = useAuth()
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const notify = useToast()
@@ -223,7 +236,7 @@ function ReviewForm({ item, onClose, onSaved }: { item: SummaryListItem; onClose
     setSaving(true)
     setErr(null)
     try {
-      await api.summaries.review(item.id, by.trim())
+      await api.summaries.review(item.id)
       notify('ok', 'Bula marcada como revisada')
       onSaved()
     } catch (e) {
@@ -236,13 +249,19 @@ function ReviewForm({ item, onClose, onSaved }: { item: SummaryListItem; onClose
   return (
     <Modal title={`Revisar bula de ${item.brand_name || item.active_ingredient}`} onClose={onClose}>
       <form onSubmit={submit} className="form">
-        <Field label="Revisado por" required hint="Nome do farmacêutico responsável pela revisão.">
-          <input value={by} onChange={(e) => setBy(e.target.value)} required autoFocus />
-        </Field>
+        <p>
+          Confirma que você conferiu esta bula simplificada com a bula oficial?
+          A revisão fica registrada em seu nome e a bula passa a aparecer no app.
+        </p>
+        <div className="review-sign">
+          <span className="muted small">Revisado por</span>
+          <strong>{user?.name}</strong>
+          <span className="muted small">{user?.email}</span>
+        </div>
         {err && <div className="alert">{err}</div>}
         <div className="form-actions">
           <button type="button" onClick={onClose}>Cancelar</button>
-          <button className="primary" disabled={saving}>{saving ? 'Salvando…' : 'Marcar como revisada'}</button>
+          <button className="primary" disabled={saving}>{saving ? 'Salvando…' : 'Confirmar revisão'}</button>
         </div>
       </form>
     </Modal>

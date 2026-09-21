@@ -1,9 +1,12 @@
 import type {
   Drug, DrugInput, EanSummary, Package, PackageCreate, PackageUpdate,
-  Page, Summary, SummaryInput, SummaryListItem,
+  Page, Summary, SummaryInput, SummaryListItem, User, UserCreate, UserRow, UserUpdate,
 } from './types'
 
 const BASE = '/api'
+
+/** Evento disparado quando a API responde 401 no meio do uso */
+export const SESSION_EXPIRED = 'pharmacode:session-expired'
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -20,6 +23,11 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
   if (!res.ok) {
     // A API responde erros em texto puro (http.Error)
     const text = (await res.text()).trim()
+    // Sessão venceu ou foi encerrada (ex.: admin desativou o usuário): avisa o app
+    // para voltar à tela de login. O próprio login e o /auth/me tratam o 401 sozinhos.
+    if (res.status === 401 && !path.startsWith('/auth/')) {
+      window.dispatchEvent(new Event(SESSION_EXPIRED))
+    }
     throw new ApiError(res.status, text || `Erro ${res.status}`)
   }
   if (res.status === 204) return undefined as T
@@ -48,9 +56,22 @@ export const api = {
     get: (id: number) => request<Summary>('GET', `/summaries/${id}`),
     create: (s: SummaryInput & { drug_id: number }) => request<{ id: number }>('POST', '/summaries', s),
     update: (id: number, s: SummaryInput) => request<void>('PUT', `/summaries/${id}`, s),
-    review: (id: number, reviewed_by: string) =>
-      request<void>('PATCH', `/summaries/${id}/review`, { reviewed_by }),
+    // quem revisou é o usuário logado; a API pega da sessão
+    review: (id: number) => request<void>('PATCH', `/summaries/${id}/review`),
     remove: (id: number) => request<void>('DELETE', `/summaries/${id}`),
+  },
+  auth: {
+    login: (email: string, password: string) => request<User>('POST', '/auth/login', { email, password }),
+    logout: () => request<void>('POST', '/auth/logout'),
+    me: () => request<User>('GET', '/auth/me'),
+    changePassword: (current_password: string, new_password: string) =>
+      request<void>('PUT', '/auth/password', { current_password, new_password }),
+  },
+  users: {
+    list: () => request<UserRow[]>('GET', '/users'),
+    create: (u: UserCreate) => request<{ id: number }>('POST', '/users', u),
+    update: (id: number, u: UserUpdate) => request<void>('PUT', `/users/${id}`, u),
+    setPassword: (id: number, password: string) => request<void>('PUT', `/users/${id}/password`, { password }),
   },
 }
 

@@ -86,3 +86,27 @@ export type EanSummary = {
   leaflet_expedient: string | null
   leaflet_published_at: string | null
 } & { [K in SummaryTextKey]: string | null }
+
+// ---------- usuários e login ----------
+export type Role = 'editor' | 'reviewer' | 'admin'
+
+export const ROLE_LABEL: Record<Role, string> = {
+  editor: 'Editor',
+  reviewer: 'Farmacêutico (revisor)',
+  admin: 'Administrador',
+}
+
+export const ROLE_HINT: Record<Role, string> = {
+  editor: 'Cadastra e edita remédios, embalagens e bulas.',
+  reviewer: 'Tudo do editor + marca bulas como revisadas.',
+  admin: 'Tudo do revisor + gerencia usuários.',
+}
+
+/** Usuário logado (GET /auth/me) */
+export type User = { id: number; email: string; name: string; role: Role }
+
+/** Linha da lista de usuários (GET /users) */
+export type UserRow = User & { active: boolean; created_at: string | null; updated_at: string | null }
+
+export type UserCreate = { name: string; email: string; password: string; role: Role }
+export type UserUpdate = { name: string; email: string; role: Role; active: boolean }
