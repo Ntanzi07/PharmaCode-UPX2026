@@ -23,6 +23,8 @@ type createSummaryRequest struct {
 	DrugID            int64  `json:"drug_id"`
 	WhatIsItFor       string `json:"what_is_it_for"`
 	Posology          string `json:"posology"`
+	MissedDose        string `json:"missed_dose"`
+	Warnings          string `json:"warnings"`
 	AdverseEffects    string `json:"adverse_effects"`
 	DrugInteractions  string `json:"drug_interactions"`
 	Contraindications string `json:"contraindications"`
@@ -31,11 +33,16 @@ type createSummaryRequest struct {
 	MechanismOfAction string `json:"mechanism_of_action"`
 	Storage           string `json:"storage"`
 	SourceURL         string `json:"source_url"`
+	// Versão da bula oficial que foi resumida
+	LeafletExpedient   string `json:"leaflet_expedient" example:"0123456/24-5"`
+	LeafletPublishedAt string `json:"leaflet_published_at" example:"2024-05-31" format:"date"`
 }
 
 type updateSummaryRequest struct {
 	WhatIsItFor       string `json:"what_is_it_for"`
 	Posology          string `json:"posology"`
+	MissedDose        string `json:"missed_dose"`
+	Warnings          string `json:"warnings"`
 	AdverseEffects    string `json:"adverse_effects"`
 	DrugInteractions  string `json:"drug_interactions"`
 	Contraindications string `json:"contraindications"`
@@ -44,6 +51,9 @@ type updateSummaryRequest struct {
 	MechanismOfAction string `json:"mechanism_of_action"`
 	Storage           string `json:"storage"`
 	SourceURL         string `json:"source_url"`
+	// Versão da bula oficial que foi resumida
+	LeafletExpedient   string `json:"leaflet_expedient" example:"0123456/24-5"`
+	LeafletPublishedAt string `json:"leaflet_published_at" example:"2024-05-31" format:"date"`
 }
 
 type reviewSummaryRequest struct {
@@ -94,6 +104,10 @@ func (h *SummaryHandler) CreateSummary(w http.ResponseWriter, r *http.Request) {
 
 	id, err := h.service.Create(r.Context(), service.CreateSummaryInput(req))
 	if err != nil {
+		if errors.Is(err, service.ErrInvalidLeafletDate) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		if errors.Is(err, service.ErrDrugNotFound) {
 			http.Error(w, "drug not found for this drug_id", http.StatusNotFound)
 			return
@@ -266,6 +280,10 @@ func (h *SummaryHandler) UpdateSummary(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.service.Update(r.Context(), id, service.UpdateSummaryInput(req)); err != nil {
+		if errors.Is(err, service.ErrInvalidLeafletDate) {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 		if errors.Is(err, service.ErrSummaryNotFound) {
 			http.Error(w, "summary not found", http.StatusNotFound)
 			return

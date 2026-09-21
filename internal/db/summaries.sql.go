@@ -15,6 +15,8 @@ const createSummary = `-- name: CreateSummary :one
 INSERT INTO summaries (drug_id,
                        what_is_it_for,
                        posology,
+                       missed_dose,
+                       warnings,
                        adverse_effects,
                        drug_interactions,
                        contraindications,
@@ -22,22 +24,28 @@ INSERT INTO summaries (drug_id,
                        when_to_seek_help,
                        mechanism_of_action,
                        storage,
-                       source_url)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id
+                       source_url,
+                       leaflet_expedient,
+                       leaflet_published_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id
 `
 
 type CreateSummaryParams struct {
-	DrugID            int64       `json:"drug_id"`
-	WhatIsItFor       string      `json:"what_is_it_for"`
-	Posology          string      `json:"posology"`
-	AdverseEffects    pgtype.Text `json:"adverse_effects"`
-	DrugInteractions  pgtype.Text `json:"drug_interactions"`
-	Contraindications pgtype.Text `json:"contraindications"`
-	SideEffects       pgtype.Text `json:"side_effects"`
-	WhenToSeekHelp    pgtype.Text `json:"when_to_seek_help"`
-	MechanismOfAction pgtype.Text `json:"mechanism_of_action"`
-	Storage           pgtype.Text `json:"storage"`
-	SourceUrl         string      `json:"source_url"`
+	DrugID             int64       `json:"drug_id"`
+	WhatIsItFor        string      `json:"what_is_it_for"`
+	Posology           string      `json:"posology"`
+	MissedDose         pgtype.Text `json:"missed_dose"`
+	Warnings           pgtype.Text `json:"warnings"`
+	AdverseEffects     pgtype.Text `json:"adverse_effects"`
+	DrugInteractions   pgtype.Text `json:"drug_interactions"`
+	Contraindications  pgtype.Text `json:"contraindications"`
+	SideEffects        pgtype.Text `json:"side_effects"`
+	WhenToSeekHelp     pgtype.Text `json:"when_to_seek_help"`
+	MechanismOfAction  pgtype.Text `json:"mechanism_of_action"`
+	Storage            pgtype.Text `json:"storage"`
+	SourceUrl          string      `json:"source_url"`
+	LeafletExpedient   pgtype.Text `json:"leaflet_expedient"`
+	LeafletPublishedAt pgtype.Date `json:"leaflet_published_at"`
 }
 
 func (q *Queries) CreateSummary(ctx context.Context, arg CreateSummaryParams) (int64, error) {
@@ -45,6 +53,8 @@ func (q *Queries) CreateSummary(ctx context.Context, arg CreateSummaryParams) (i
 		arg.DrugID,
 		arg.WhatIsItFor,
 		arg.Posology,
+		arg.MissedDose,
+		arg.Warnings,
 		arg.AdverseEffects,
 		arg.DrugInteractions,
 		arg.Contraindications,
@@ -53,6 +63,8 @@ func (q *Queries) CreateSummary(ctx context.Context, arg CreateSummaryParams) (i
 		arg.MechanismOfAction,
 		arg.Storage,
 		arg.SourceUrl,
+		arg.LeafletExpedient,
+		arg.LeafletPublishedAt,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -78,6 +90,8 @@ SELECT id,
        drug_id,
        what_is_it_for,
        posology,
+       missed_dose,
+       warnings,
        adverse_effects,
        drug_interactions,
        contraindications,
@@ -86,6 +100,8 @@ SELECT id,
        mechanism_of_action,
        storage,
        source_url,
+       leaflet_expedient,
+       leaflet_published_at,
        reviewed_by,
        reviewed_at,
        updated_at
@@ -94,21 +110,25 @@ WHERE drug_id = $1
 `
 
 type GetSummaryByDrugIDRow struct {
-	ID                int64              `json:"id"`
-	DrugID            int64              `json:"drug_id"`
-	WhatIsItFor       string             `json:"what_is_it_for"`
-	Posology          string             `json:"posology"`
-	AdverseEffects    pgtype.Text        `json:"adverse_effects"`
-	DrugInteractions  pgtype.Text        `json:"drug_interactions"`
-	Contraindications pgtype.Text        `json:"contraindications"`
-	SideEffects       pgtype.Text        `json:"side_effects"`
-	WhenToSeekHelp    pgtype.Text        `json:"when_to_seek_help"`
-	MechanismOfAction pgtype.Text        `json:"mechanism_of_action"`
-	Storage           pgtype.Text        `json:"storage"`
-	SourceUrl         string             `json:"source_url"`
-	ReviewedBy        pgtype.Text        `json:"reviewed_by"`
-	ReviewedAt        pgtype.Timestamptz `json:"reviewed_at"`
-	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	ID                 int64              `json:"id"`
+	DrugID             int64              `json:"drug_id"`
+	WhatIsItFor        string             `json:"what_is_it_for"`
+	Posology           string             `json:"posology"`
+	MissedDose         pgtype.Text        `json:"missed_dose"`
+	Warnings           pgtype.Text        `json:"warnings"`
+	AdverseEffects     pgtype.Text        `json:"adverse_effects"`
+	DrugInteractions   pgtype.Text        `json:"drug_interactions"`
+	Contraindications  pgtype.Text        `json:"contraindications"`
+	SideEffects        pgtype.Text        `json:"side_effects"`
+	WhenToSeekHelp     pgtype.Text        `json:"when_to_seek_help"`
+	MechanismOfAction  pgtype.Text        `json:"mechanism_of_action"`
+	Storage            pgtype.Text        `json:"storage"`
+	SourceUrl          string             `json:"source_url"`
+	LeafletExpedient   pgtype.Text        `json:"leaflet_expedient"`
+	LeafletPublishedAt pgtype.Date        `json:"leaflet_published_at"`
+	ReviewedBy         pgtype.Text        `json:"reviewed_by"`
+	ReviewedAt         pgtype.Timestamptz `json:"reviewed_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) GetSummaryByDrugID(ctx context.Context, drugID int64) (GetSummaryByDrugIDRow, error) {
@@ -119,6 +139,8 @@ func (q *Queries) GetSummaryByDrugID(ctx context.Context, drugID int64) (GetSumm
 		&i.DrugID,
 		&i.WhatIsItFor,
 		&i.Posology,
+		&i.MissedDose,
+		&i.Warnings,
 		&i.AdverseEffects,
 		&i.DrugInteractions,
 		&i.Contraindications,
@@ -127,6 +149,8 @@ func (q *Queries) GetSummaryByDrugID(ctx context.Context, drugID int64) (GetSumm
 		&i.MechanismOfAction,
 		&i.Storage,
 		&i.SourceUrl,
+		&i.LeafletExpedient,
+		&i.LeafletPublishedAt,
 		&i.ReviewedBy,
 		&i.ReviewedAt,
 		&i.UpdatedAt,
@@ -139,6 +163,8 @@ SELECT id,
        drug_id,
        what_is_it_for,
        posology,
+       missed_dose,
+       warnings,
        adverse_effects,
        drug_interactions,
        contraindications,
@@ -147,6 +173,8 @@ SELECT id,
        mechanism_of_action,
        storage,
        source_url,
+       leaflet_expedient,
+       leaflet_published_at,
        reviewed_by,
        reviewed_at,
        updated_at
@@ -155,21 +183,25 @@ WHERE id = $1
 `
 
 type GetSummaryByIDRow struct {
-	ID                int64              `json:"id"`
-	DrugID            int64              `json:"drug_id"`
-	WhatIsItFor       string             `json:"what_is_it_for"`
-	Posology          string             `json:"posology"`
-	AdverseEffects    pgtype.Text        `json:"adverse_effects"`
-	DrugInteractions  pgtype.Text        `json:"drug_interactions"`
-	Contraindications pgtype.Text        `json:"contraindications"`
-	SideEffects       pgtype.Text        `json:"side_effects"`
-	WhenToSeekHelp    pgtype.Text        `json:"when_to_seek_help"`
-	MechanismOfAction pgtype.Text        `json:"mechanism_of_action"`
-	Storage           pgtype.Text        `json:"storage"`
-	SourceUrl         string             `json:"source_url"`
-	ReviewedBy        pgtype.Text        `json:"reviewed_by"`
-	ReviewedAt        pgtype.Timestamptz `json:"reviewed_at"`
-	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	ID                 int64              `json:"id"`
+	DrugID             int64              `json:"drug_id"`
+	WhatIsItFor        string             `json:"what_is_it_for"`
+	Posology           string             `json:"posology"`
+	MissedDose         pgtype.Text        `json:"missed_dose"`
+	Warnings           pgtype.Text        `json:"warnings"`
+	AdverseEffects     pgtype.Text        `json:"adverse_effects"`
+	DrugInteractions   pgtype.Text        `json:"drug_interactions"`
+	Contraindications  pgtype.Text        `json:"contraindications"`
+	SideEffects        pgtype.Text        `json:"side_effects"`
+	WhenToSeekHelp     pgtype.Text        `json:"when_to_seek_help"`
+	MechanismOfAction  pgtype.Text        `json:"mechanism_of_action"`
+	Storage            pgtype.Text        `json:"storage"`
+	SourceUrl          string             `json:"source_url"`
+	LeafletExpedient   pgtype.Text        `json:"leaflet_expedient"`
+	LeafletPublishedAt pgtype.Date        `json:"leaflet_published_at"`
+	ReviewedBy         pgtype.Text        `json:"reviewed_by"`
+	ReviewedAt         pgtype.Timestamptz `json:"reviewed_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) GetSummaryByID(ctx context.Context, id int64) (GetSummaryByIDRow, error) {
@@ -180,6 +212,8 @@ func (q *Queries) GetSummaryByID(ctx context.Context, id int64) (GetSummaryByIDR
 		&i.DrugID,
 		&i.WhatIsItFor,
 		&i.Posology,
+		&i.MissedDose,
+		&i.Warnings,
 		&i.AdverseEffects,
 		&i.DrugInteractions,
 		&i.Contraindications,
@@ -188,6 +222,8 @@ func (q *Queries) GetSummaryByID(ctx context.Context, id int64) (GetSummaryByIDR
 		&i.MechanismOfAction,
 		&i.Storage,
 		&i.SourceUrl,
+		&i.LeafletExpedient,
+		&i.LeafletPublishedAt,
 		&i.ReviewedBy,
 		&i.ReviewedAt,
 		&i.UpdatedAt,
@@ -202,6 +238,8 @@ SELECT s.id,
        d.active_ingredient,
        s.what_is_it_for,
        s.source_url,
+       s.leaflet_expedient,
+       s.leaflet_published_at,
        s.reviewed_by,
        s.reviewed_at,
        s.updated_at
@@ -217,15 +255,17 @@ type ListSummariesParams struct {
 }
 
 type ListSummariesRow struct {
-	ID               int64              `json:"id"`
-	DrugID           int64              `json:"drug_id"`
-	BrandName        pgtype.Text        `json:"brand_name"`
-	ActiveIngredient string             `json:"active_ingredient"`
-	WhatIsItFor      string             `json:"what_is_it_for"`
-	SourceUrl        string             `json:"source_url"`
-	ReviewedBy       pgtype.Text        `json:"reviewed_by"`
-	ReviewedAt       pgtype.Timestamptz `json:"reviewed_at"`
-	UpdatedAt        pgtype.Timestamptz `json:"updated_at"`
+	ID                 int64              `json:"id"`
+	DrugID             int64              `json:"drug_id"`
+	BrandName          pgtype.Text        `json:"brand_name"`
+	ActiveIngredient   string             `json:"active_ingredient"`
+	WhatIsItFor        string             `json:"what_is_it_for"`
+	SourceUrl          string             `json:"source_url"`
+	LeafletExpedient   pgtype.Text        `json:"leaflet_expedient"`
+	LeafletPublishedAt pgtype.Date        `json:"leaflet_published_at"`
+	ReviewedBy         pgtype.Text        `json:"reviewed_by"`
+	ReviewedAt         pgtype.Timestamptz `json:"reviewed_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) ListSummaries(ctx context.Context, arg ListSummariesParams) ([]ListSummariesRow, error) {
@@ -244,6 +284,8 @@ func (q *Queries) ListSummaries(ctx context.Context, arg ListSummariesParams) ([
 			&i.ActiveIngredient,
 			&i.WhatIsItFor,
 			&i.SourceUrl,
+			&i.LeafletExpedient,
+			&i.LeafletPublishedAt,
 			&i.ReviewedBy,
 			&i.ReviewedAt,
 			&i.UpdatedAt,
@@ -281,32 +323,40 @@ func (q *Queries) ReviewSummary(ctx context.Context, arg ReviewSummaryParams) (i
 
 const updateSummary = `-- name: UpdateSummary :execrows
 UPDATE summaries
-SET what_is_it_for      = $2,
-    posology            = $3,
-    adverse_effects     = $4,
-    drug_interactions   = $5,
-    contraindications   = $6,
-    side_effects        = $7,
-    when_to_seek_help   = $8,
-    mechanism_of_action = $9,
-    storage             = $10,
-    source_url          = $11,
-    updated_at          = NOW()
+SET what_is_it_for       = $2,
+    posology             = $3,
+    missed_dose          = $4,
+    warnings             = $5,
+    adverse_effects      = $6,
+    drug_interactions    = $7,
+    contraindications    = $8,
+    side_effects         = $9,
+    when_to_seek_help    = $10,
+    mechanism_of_action  = $11,
+    storage              = $12,
+    source_url           = $13,
+    leaflet_expedient    = $14,
+    leaflet_published_at = $15,
+    updated_at           = NOW()
 WHERE id = $1
 `
 
 type UpdateSummaryParams struct {
-	ID                int64       `json:"id"`
-	WhatIsItFor       string      `json:"what_is_it_for"`
-	Posology          string      `json:"posology"`
-	AdverseEffects    pgtype.Text `json:"adverse_effects"`
-	DrugInteractions  pgtype.Text `json:"drug_interactions"`
-	Contraindications pgtype.Text `json:"contraindications"`
-	SideEffects       pgtype.Text `json:"side_effects"`
-	WhenToSeekHelp    pgtype.Text `json:"when_to_seek_help"`
-	MechanismOfAction pgtype.Text `json:"mechanism_of_action"`
-	Storage           pgtype.Text `json:"storage"`
-	SourceUrl         string      `json:"source_url"`
+	ID                 int64       `json:"id"`
+	WhatIsItFor        string      `json:"what_is_it_for"`
+	Posology           string      `json:"posology"`
+	MissedDose         pgtype.Text `json:"missed_dose"`
+	Warnings           pgtype.Text `json:"warnings"`
+	AdverseEffects     pgtype.Text `json:"adverse_effects"`
+	DrugInteractions   pgtype.Text `json:"drug_interactions"`
+	Contraindications  pgtype.Text `json:"contraindications"`
+	SideEffects        pgtype.Text `json:"side_effects"`
+	WhenToSeekHelp     pgtype.Text `json:"when_to_seek_help"`
+	MechanismOfAction  pgtype.Text `json:"mechanism_of_action"`
+	Storage            pgtype.Text `json:"storage"`
+	SourceUrl          string      `json:"source_url"`
+	LeafletExpedient   pgtype.Text `json:"leaflet_expedient"`
+	LeafletPublishedAt pgtype.Date `json:"leaflet_published_at"`
 }
 
 func (q *Queries) UpdateSummary(ctx context.Context, arg UpdateSummaryParams) (int64, error) {
@@ -314,6 +364,8 @@ func (q *Queries) UpdateSummary(ctx context.Context, arg UpdateSummaryParams) (i
 		arg.ID,
 		arg.WhatIsItFor,
 		arg.Posology,
+		arg.MissedDose,
+		arg.Warnings,
 		arg.AdverseEffects,
 		arg.DrugInteractions,
 		arg.Contraindications,
@@ -322,6 +374,8 @@ func (q *Queries) UpdateSummary(ctx context.Context, arg UpdateSummaryParams) (i
 		arg.MechanismOfAction,
 		arg.Storage,
 		arg.SourceUrl,
+		arg.LeafletExpedient,
+		arg.LeafletPublishedAt,
 	)
 	if err != nil {
 		return 0, err

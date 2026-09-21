@@ -19,13 +19,17 @@ export type DrugInput = {
 export type Package = {
   id: number
   drug_id: number
-  ean: string
   description: string
+  /** Registro da apresentação na Anvisa (13 dígitos), ponte com a CMED */
+  presentation_registration: string | null
+  /** Uma apresentação pode ter mais de um código de barras na prateleira */
+  eans: string[]
   updated_at: string | null
 }
 
-export type PackageCreate = { registration_number: string; ean: string; description: string }
-export type PackageUpdate = { drug_id: number; ean: string; description: string }
+type PackageFields = { eans: string[]; description: string; presentation_registration: string }
+export type PackageCreate = PackageFields & { registration_number: string }
+export type PackageUpdate = PackageFields & { drug_id: number }
 
 export type SummaryListItem = {
   id: number
@@ -34,6 +38,8 @@ export type SummaryListItem = {
   active_ingredient: string
   what_is_it_for: string
   source_url: string
+  leaflet_expedient: string | null
+  leaflet_published_at: string | null
   reviewed_by: string | null
   reviewed_at: string | null
   updated_at: string | null
@@ -42,9 +48,11 @@ export type SummaryListItem = {
 export const SUMMARY_TEXT_FIELDS = [
   { key: 'what_is_it_for', label: 'Para que serve', required: true },
   { key: 'posology', label: 'Posologia', required: true },
+  { key: 'missed_dose', label: 'O que fazer se esquecer de usar', required: false },
   { key: 'adverse_effects', label: 'Reações adversas', required: false },
   { key: 'drug_interactions', label: 'Interações medicamentosas', required: false },
   { key: 'contraindications', label: 'Contraindicações', required: false },
+  { key: 'warnings', label: 'Advertências e precauções', required: false },
   { key: 'side_effects', label: 'Efeitos colaterais', required: false },
   { key: 'when_to_seek_help', label: 'Quando procurar ajuda', required: false },
   { key: 'mechanism_of_action', label: 'Mecanismo de ação', required: false },
@@ -53,18 +61,28 @@ export const SUMMARY_TEXT_FIELDS = [
 
 export type SummaryTextKey = (typeof SUMMARY_TEXT_FIELDS)[number]['key']
 
-export type SummaryInput = Record<SummaryTextKey, string> & { source_url: string }
+/** Versão da bula oficial que foi resumida (expediente e data de publicação YYYY-MM-DD) */
+type LeafletVersion = { leaflet_expedient: string; leaflet_published_at: string }
+
+export type SummaryInput = Record<SummaryTextKey, string> & { source_url: string } & LeafletVersion
 
 export type Summary = { id: number; drug_id: number; source_url: string } & {
   [K in SummaryTextKey]: string | null
-} & { reviewed_by: string | null; reviewed_at: string | null; updated_at: string | null }
+} & { [K in keyof LeafletVersion]: string | null } & {
+  reviewed_by: string | null
+  reviewed_at: string | null
+  updated_at: string | null
+}
 
 export type EanSummary = {
   ean: string
   description: string
+  presentation_registration: string | null
   registration_number: string
   brand_name: string | null
   active_ingredient: string
   manufacturer: string
-  source_url?: string | null
+  source_url: string | null
+  leaflet_expedient: string | null
+  leaflet_published_at: string | null
 } & { [K in SummaryTextKey]: string | null }

@@ -19,49 +19,65 @@ func NewPackageService(q PackageQuerier) *PackageService {
 }
 
 type CreatePackageInput struct {
-	RegistrationNumber string
-	Ean                string
-	Description        string
+	RegistrationNumber       string
+	Eans                     []string
+	Description              string
+	PresentationRegistration string
 }
 
 type UpdatePackageInput struct {
-	DrugID      int64
-	Ean         string
-	Description string
+	DrugID                   int64
+	Eans                     []string
+	Description              string
+	PresentationRegistration string
+}
+
+// Nome da constraint UNIQUE que o Postgres gera para packages.presentation_registration.
+const presentationRegistrationConstraint = "packages_presentation_registration_key"
+
+// packageWriteError traduz os erros do Postgres de insert/update de package.
+func packageWriteError(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23505": // unique_violation: EAN ou registro da apresentação repetido
+			if pgErr.ConstraintName == presentationRegistrationConstraint {
+				return ErrDuplicatePresentation
+			}
+			return ErrDuplicateEAN
+		case "23503": // foreign_key_violation: drug_id não existe
+			return ErrDrugNotFound
+		}
+	}
+	return err
 }
 
 func (s *PackageService) Create(ctx context.Context, in CreatePackageInput) (int64, error) {
 	id, err := s.queries.CreatePackage(ctx, db.CreatePackageParams{
-		RegistrationNumber: in.RegistrationNumber,
-		Ean:                in.Ean,
-		Description:        in.Description,
+		RegistrationNumber:       in.RegistrationNumber,
+		Eans:                     in.Eans,
+		Description:              in.Description,
+		PresentationRegistration: optionalText(in.PresentationRegistration),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, ErrDrugNotFound
 		}
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return 0, ErrDuplicateEAN
-		}
-		return 0, err
+		return 0, packageWriteError(err)
 	}
 	return id, nil
 }
 
 func (s *PackageService) Update(ctx context.Context, id int64, in UpdatePackageInput) error {
 	rows, err := s.queries.UpdatePackage(ctx, db.UpdatePackageParams{
-		ID:          id,
-		DrugID:      in.DrugID,
-		Ean:         in.Ean,
-		Description: in.Description,
+		ID:                       id,
+		DrugID:                   in.DrugID,
+		Eans:                     in.Eans,
+		Description:              in.Description,
+		PresentationRegistration: optionalText(in.PresentationRegistration),
 	})
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return ErrDuplicateEAN
-		}
-		return err
+		return packageWriteError(err)
 	}
 	if rows == 0 {
 		return ErrPackageNotFound

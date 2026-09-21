@@ -6,12 +6,14 @@ import Pager from '../components/Pager'
 import Field from '../components/Field'
 import { usePaged, PAGE_SIZE } from '../components/usePaged'
 import { useToast } from '../components/Toast'
-import { fmtDate } from '../components/format'
+import { fmtDate, fmtDay } from '../components/format'
 import { drugLabel, useDrugs } from '../components/drugs'
+import DrugPicker from '../components/DrugPicker'
 
 const EMPTY: SummaryInput = {
-  what_is_it_for: '', posology: '', adverse_effects: '', drug_interactions: '', contraindications: '',
-  side_effects: '', when_to_seek_help: '', mechanism_of_action: '', storage: '', source_url: '',
+  what_is_it_for: '', posology: '', missed_dose: '', warnings: '', adverse_effects: '', drug_interactions: '',
+  contraindications: '', side_effects: '', when_to_seek_help: '', mechanism_of_action: '', storage: '',
+  source_url: '', leaflet_expedient: '', leaflet_published_at: '',
 }
 
 type Editing = { mode: 'new' } | { mode: 'edit'; id: number } | { mode: 'review'; item: SummaryListItem }
@@ -46,7 +48,7 @@ export default function SummariesPage() {
       <div className="card">
         <table>
           <thead>
-            <tr><th>ID</th><th>Remédio</th><th>Para que serve</th><th>Revisão</th><th>Atualizado</th><th /></tr>
+            <tr><th>ID</th><th>Remédio</th><th>Para que serve</th><th>Versão da bula</th><th>Revisão</th><th>Atualizado</th><th /></tr>
           </thead>
           <tbody>
             {rows.map((s) => (
@@ -56,7 +58,19 @@ export default function SummariesPage() {
                   <strong>{s.brand_name || s.active_ingredient}</strong>
                   <div className="muted small">{s.active_ingredient}</div>
                 </td>
-                <td className="clamp">{s.what_is_it_for}</td>
+                <td className="purpose"><div className="clamp" title={s.what_is_it_for}>{s.what_is_it_for}</div></td>
+                <td>
+                  {s.leaflet_expedient || s.leaflet_published_at ? (
+                    <>
+                      <div className="mono small">{s.leaflet_expedient || '—'}</div>
+                      <div className="muted small">{fmtDay(s.leaflet_published_at)}</div>
+                    </>
+                  ) : (
+                    <span className="badge warn" title="Sem expediente nem data: não dá para saber se o resumo está atualizado">
+                      Sem versão
+                    </span>
+                  )}
+                </td>
                 <td>
                   {s.reviewed_by
                     ? <span className="badge ok" title={fmtDate(s.reviewed_at)}>✓ {s.reviewed_by}</span>
@@ -71,7 +85,7 @@ export default function SummariesPage() {
               </tr>
             ))}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={6} className="empty">Nenhuma bula cadastrada.</td></tr>
+              <tr><td colSpan={7} className="empty">Nenhuma bula cadastrada.</td></tr>
             )}
           </tbody>
         </table>
@@ -102,7 +116,12 @@ function SummaryForm({ id, onClose, onSaved }: { id?: number; onClose: () => voi
       .get(id)
       .then((s) => {
         setDrugId(s.drug_id)
-        const f = { ...EMPTY, source_url: s.source_url }
+        const f = {
+          ...EMPTY,
+          source_url: s.source_url,
+          leaflet_expedient: s.leaflet_expedient ?? '',
+          leaflet_published_at: s.leaflet_published_at ?? '',
+        }
         for (const { key } of SUMMARY_TEXT_FIELDS) f[key] = s[key] ?? ''
         setForm(f)
       })
@@ -137,10 +156,7 @@ function SummaryForm({ id, onClose, onSaved }: { id?: number; onClose: () => voi
             {id !== undefined ? (
               <input value={drug ? drugLabel(drug) : `#${drugId}`} disabled />
             ) : (
-              <select value={drugId} onChange={(e) => setDrugId(e.target.value ? Number(e.target.value) : '')} required>
-                <option value="">Selecione…</option>
-                {drugs.map((d) => <option key={d.id} value={d.id}>{drugLabel(d)}</option>)}
-              </select>
+              <DrugPicker drugs={drugs} value={drugId} onChange={setDrugId} />
             )}
           </Field>
           <div className="grid2">
@@ -164,6 +180,27 @@ function SummaryForm({ id, onClose, onSaved }: { id?: number; onClose: () => voi
               placeholder="https://consultas.anvisa.gov.br/..."
             />
           </Field>
+          <fieldset className="group">
+            <legend>Versão da bula oficial resumida</legend>
+            <p className="hint">Serve para saber quando este resumo ficou desatualizado em relação à bula publicada.</p>
+            <div className="grid2">
+              <Field label="Número do expediente">
+                <input
+                  value={form.leaflet_expedient}
+                  onChange={(e) => setForm({ ...form, leaflet_expedient: e.target.value })}
+                  maxLength={30}
+                  placeholder="Ex.: 0123456/24-5"
+                />
+              </Field>
+              <Field label="Data de publicação da bula">
+                <input
+                  type="date"
+                  value={form.leaflet_published_at}
+                  onChange={(e) => setForm({ ...form, leaflet_published_at: e.target.value })}
+                />
+              </Field>
+            </div>
+          </fieldset>
           {err && <div className="alert">{err}</div>}
           <div className="form-actions">
             <button type="button" onClick={onClose}>Cancelar</button>

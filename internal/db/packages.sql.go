@@ -12,20 +12,38 @@ import (
 )
 
 const createPackage = `-- name: CreatePackage :one
-INSERT INTO packages (drug_id, ean, description)
-SELECT d.id, $2, $3
-FROM drugs d
-WHERE d.registration_number = $1 RETURNING id
+WITH new_package AS (
+    INSERT INTO packages (drug_id, description, presentation_registration)
+        SELECT d.id, $1::text, $2::varchar
+        FROM drugs AS d
+        WHERE d.registration_number = $3::varchar
+        RETURNING id),
+     new_eans AS (
+         INSERT INTO package_eans (package_id, ean)
+             SELECT np.id, e.ean
+             FROM new_package AS np,
+                  unnest($4::text[]) AS e(ean))
+SELECT id
+FROM new_package
 `
 
 type CreatePackageParams struct {
-	RegistrationNumber string `json:"registration_number"`
-	Ean                string `json:"ean"`
-	Description        string `json:"description"`
+	Description              string      `json:"description"`
+	PresentationRegistration pgtype.Text `json:"presentation_registration"`
+	RegistrationNumber       string      `json:"registration_number"`
+	Eans                     []string    `json:"eans"`
 }
 
+// Cria o package e os EANs dele num único comando (atômico): se um EAN já
+// existir, nada é gravado. Sem remédio com esse registration_number, não
+// retorna linha (pgx.ErrNoRows).
 func (q *Queries) CreatePackage(ctx context.Context, arg CreatePackageParams) (int64, error) {
-	row := q.db.QueryRow(ctx, createPackage, arg.RegistrationNumber, arg.Ean, arg.Description)
+	row := q.db.QueryRow(ctx, createPackage,
+		arg.Description,
+		arg.PresentationRegistration,
+		arg.RegistrationNumber,
+		arg.Eans,
+	)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
@@ -46,21 +64,25 @@ func (q *Queries) DeletePackage(ctx context.Context, id int64) (int64, error) {
 }
 
 const getPackageById = `-- name: GetPackageById :one
-SELECT id,
-       drug_id,
-       ean,
-       description,
-       updated_at
-FROM packages
-WHERE id = $1
+SELECT p.id,
+       p.drug_id,
+       p.description,
+       p.presentation_registration,
+       COALESCE(array_agg(pe.ean ORDER BY pe.ean) FILTER (WHERE pe.ean IS NOT NULL), '{}')::text[] AS eans,
+       p.updated_at
+FROM packages AS p
+         LEFT JOIN package_eans AS pe ON pe.package_id = p.id
+WHERE p.id = $1
+GROUP BY p.id
 `
 
 type GetPackageByIdRow struct {
-	ID          int64              `json:"id"`
-	DrugID      int64              `json:"drug_id"`
-	Ean         string             `json:"ean"`
-	Description string             `json:"description"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID                       int64              `json:"id"`
+	DrugID                   int64              `json:"drug_id"`
+	Description              string             `json:"description"`
+	PresentationRegistration pgtype.Text        `json:"presentation_registration"`
+	Eans                     []string           `json:"eans"`
+	UpdatedAt                pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) GetPackageById(ctx context.Context, id int64) (GetPackageByIdRow, error) {
@@ -69,21 +91,25 @@ func (q *Queries) GetPackageById(ctx context.Context, id int64) (GetPackageByIdR
 	err := row.Scan(
 		&i.ID,
 		&i.DrugID,
-		&i.Ean,
 		&i.Description,
+		&i.PresentationRegistration,
+		&i.Eans,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const listPackages = `-- name: ListPackages :many
-SELECT id,
-       drug_id,
-       ean,
-       description,
-       updated_at
-FROM packages
-ORDER BY ean LIMIT $1
+SELECT p.id,
+       p.drug_id,
+       p.description,
+       p.presentation_registration,
+       COALESCE(array_agg(pe.ean ORDER BY pe.ean) FILTER (WHERE pe.ean IS NOT NULL), '{}')::text[] AS eans,
+       p.updated_at
+FROM packages AS p
+         LEFT JOIN package_eans AS pe ON pe.package_id = p.id
+GROUP BY p.id
+ORDER BY p.id LIMIT $1
 OFFSET $2
 `
 
@@ -93,11 +119,12 @@ type ListPackagesParams struct {
 }
 
 type ListPackagesRow struct {
-	ID          int64              `json:"id"`
-	DrugID      int64              `json:"drug_id"`
-	Ean         string             `json:"ean"`
-	Description string             `json:"description"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID                       int64              `json:"id"`
+	DrugID                   int64              `json:"drug_id"`
+	Description              string             `json:"description"`
+	PresentationRegistration pgtype.Text        `json:"presentation_registration"`
+	Eans                     []string           `json:"eans"`
+	UpdatedAt                pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) ListPackages(ctx context.Context, arg ListPackagesParams) ([]ListPackagesRow, error) {
@@ -112,8 +139,9 @@ func (q *Queries) ListPackages(ctx context.Context, arg ListPackagesParams) ([]L
 		if err := rows.Scan(
 			&i.ID,
 			&i.DrugID,
-			&i.Ean,
 			&i.Description,
+			&i.PresentationRegistration,
+			&i.Eans,
 			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -127,14 +155,17 @@ func (q *Queries) ListPackages(ctx context.Context, arg ListPackagesParams) ([]L
 }
 
 const listPackagesByDrugID = `-- name: ListPackagesByDrugID :many
-SELECT id,
-       drug_id,
-       ean,
-       description,
-       updated_at
-FROM packages
-WHERE drug_id = $1
-ORDER BY ean LIMIT $2
+SELECT p.id,
+       p.drug_id,
+       p.description,
+       p.presentation_registration,
+       COALESCE(array_agg(pe.ean ORDER BY pe.ean) FILTER (WHERE pe.ean IS NOT NULL), '{}')::text[] AS eans,
+       p.updated_at
+FROM packages AS p
+         LEFT JOIN package_eans AS pe ON pe.package_id = p.id
+WHERE p.drug_id = $1
+GROUP BY p.id
+ORDER BY p.id LIMIT $2
 OFFSET $3
 `
 
@@ -145,11 +176,12 @@ type ListPackagesByDrugIDParams struct {
 }
 
 type ListPackagesByDrugIDRow struct {
-	ID          int64              `json:"id"`
-	DrugID      int64              `json:"drug_id"`
-	Ean         string             `json:"ean"`
-	Description string             `json:"description"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID                       int64              `json:"id"`
+	DrugID                   int64              `json:"drug_id"`
+	Description              string             `json:"description"`
+	PresentationRegistration pgtype.Text        `json:"presentation_registration"`
+	Eans                     []string           `json:"eans"`
+	UpdatedAt                pgtype.Timestamptz `json:"updated_at"`
 }
 
 func (q *Queries) ListPackagesByDrugID(ctx context.Context, arg ListPackagesByDrugIDParams) ([]ListPackagesByDrugIDRow, error) {
@@ -164,8 +196,9 @@ func (q *Queries) ListPackagesByDrugID(ctx context.Context, arg ListPackagesByDr
 		if err := rows.Scan(
 			&i.ID,
 			&i.DrugID,
-			&i.Ean,
 			&i.Description,
+			&i.PresentationRegistration,
+			&i.Eans,
 			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -179,27 +212,49 @@ func (q *Queries) ListPackagesByDrugID(ctx context.Context, arg ListPackagesByDr
 }
 
 const updatePackage = `-- name: UpdatePackage :execrows
-UPDATE packages
-SET drug_id     = $2,
-    ean         = $3,
-    description = $4,
-    updated_at  = NOW()
-WHERE id = $1
+WITH updated AS (
+    UPDATE packages AS p
+        SET drug_id = $1,
+            description = $2,
+            presentation_registration = $3,
+            updated_at = NOW()
+        WHERE p.id = $4
+        RETURNING p.id),
+     removed_eans AS (
+         DELETE FROM package_eans AS pe
+             USING updated AS u
+             WHERE pe.package_id = u.id
+                 AND NOT (pe.ean = ANY ($5::text[]))),
+     added_eans AS (
+         INSERT INTO package_eans (package_id, ean)
+             SELECT u.id, e.ean
+             FROM updated AS u,
+                  unnest($5::text[]) AS e(ean)
+             WHERE NOT EXISTS (SELECT 1
+                               FROM package_eans AS x
+                               WHERE x.package_id = u.id
+                                 AND x.ean = e.ean))
+SELECT id
+FROM updated
 `
 
 type UpdatePackageParams struct {
-	ID          int64  `json:"id"`
-	DrugID      int64  `json:"drug_id"`
-	Ean         string `json:"ean"`
-	Description string `json:"description"`
+	DrugID                   int64       `json:"drug_id"`
+	Description              string      `json:"description"`
+	PresentationRegistration pgtype.Text `json:"presentation_registration"`
+	ID                       int64       `json:"id"`
+	Eans                     []string    `json:"eans"`
 }
 
+// Atualiza o package e sincroniza a lista de EANs: remove os que saíram da
+// lista e insere os novos, tudo num único comando.
 func (q *Queries) UpdatePackage(ctx context.Context, arg UpdatePackageParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updatePackage,
-		arg.ID,
 		arg.DrugID,
-		arg.Ean,
 		arg.Description,
+		arg.PresentationRegistration,
+		arg.ID,
+		arg.Eans,
 	)
 	if err != nil {
 		return 0, err

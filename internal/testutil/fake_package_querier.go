@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/db"
 )
@@ -74,19 +75,18 @@ func (f *FakePackageQuerier) CreatePackage(ctx context.Context, arg db.CreatePac
 	if !ok {
 		return 0, pgx.ErrNoRows
 	}
-	for _, p := range f.pkgs {
-		if p.Ean == arg.Ean {
-			return 0, PgError(CodeUniqueViolation)
-		}
+	if err := f.checkUnique(0, arg.Eans, arg.PresentationRegistration); err != nil {
+		return 0, err
 	}
 
 	id := f.nextID
 	f.nextID++
 	f.pkgs[id] = db.ListPackagesRow{
-		ID:          id,
-		DrugID:      drugID,
-		Ean:         arg.Ean,
-		Description: arg.Description,
+		ID:                       id,
+		DrugID:                   drugID,
+		Eans:                     append([]string(nil), arg.Eans...),
+		Description:              arg.Description,
+		PresentationRegistration: arg.PresentationRegistration,
 	}
 	return id, nil
 }
@@ -106,18 +106,39 @@ func (f *FakePackageQuerier) UpdatePackage(ctx context.Context, arg db.UpdatePac
 	if !ok {
 		return 0, nil
 	}
-	for id, p := range f.pkgs {
-		if id != arg.ID && p.Ean == arg.Ean {
-			return 0, PgError(CodeUniqueViolation)
-		}
+	if err := f.checkUnique(arg.ID, arg.Eans, arg.PresentationRegistration); err != nil {
+		return 0, err
 	}
 
 	row.DrugID = arg.DrugID
-	row.Ean = arg.Ean
+	row.Eans = append([]string(nil), arg.Eans...)
 	row.Description = arg.Description
+	row.PresentationRegistration = arg.PresentationRegistration
 	f.pkgs[arg.ID] = row
 
 	return 1, nil
+}
+
+// checkUnique imita as constraints UNIQUE do banco: um EAN só pode estar em um
+// package, e o registro da apresentação também é único. Ignora o package "self".
+func (f *FakePackageQuerier) checkUnique(self int64, eans []string, presentation pgtype.Text) error {
+	for id, p := range f.pkgs {
+		if id == self {
+			continue
+		}
+		for _, existing := range p.Eans {
+			for _, e := range eans {
+				if existing == e {
+					return PgConstraintError(CodeUniqueViolation, "package_eans_ean_key")
+				}
+			}
+		}
+		if presentation.Valid && p.PresentationRegistration.Valid &&
+			p.PresentationRegistration.String == presentation.String {
+			return PgConstraintError(CodeUniqueViolation, "packages_presentation_registration_key")
+		}
+	}
+	return nil
 }
 
 func (f *FakePackageQuerier) DeletePackage(ctx context.Context, id int64) (int64, error) {

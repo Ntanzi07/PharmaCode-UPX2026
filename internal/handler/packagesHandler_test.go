@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -25,7 +26,7 @@ func newPackageHandler(t *testing.T) (*handler.PackageHandler, *testutil.FakePac
 
 const validPackageBody = `{
 	"registration_number": "1023401230014",
-	"ean": "7891234567890",
+	"eans": ["7891234567890"],
 	"description": "Caixa com 20 comprimidos"
 }`
 
@@ -60,7 +61,7 @@ func TestCreatePackage(t *testing.T) {
 	t.Run("EAN duplicado devolve 409", func(t *testing.T) {
 		h, fake := newPackageHandler(t)
 		fake.SeedDrug("1023401230014", 7)
-		fake.SeedPackage(db.ListPackagesRow{DrugID: 7, Ean: "7891234567890"})
+		fake.SeedPackage(db.ListPackagesRow{DrugID: 7, Eans: []string{"7891234567890"}})
 
 		req := httptest.NewRequest(http.MethodPost, "/packages", strings.NewReader(validPackageBody))
 		rec := httptest.NewRecorder()
@@ -76,9 +77,14 @@ func TestCreatePackage(t *testing.T) {
 			body string
 		}{
 			{"json quebrado", `{"ean":`},
-			{"sem registration_number", `{"ean":"7891234567890","description":"x"}`},
+			{"sem registration_number", `{"eans": ["7891234567890"],"description":"x"}`},
 			{"sem ean", `{"registration_number":"1","description":"x"}`},
-			{"sem description", `{"registration_number":"1","ean":"7891234567890"}`},
+			{"sem description", `{"registration_number":"1","eans": ["7891234567890"]}`},
+			{"eans vazio", `{"registration_number":"1","eans":[],"description":"x"}`},
+			{"eans só com brancos", `{"registration_number":"1","eans":["  ",""],"description":"x"}`},
+			{"ean com letra", `{"registration_number":"1","eans":["78912345A7890"],"description":"x"}`},
+			{"ean curto demais", `{"registration_number":"1","eans":["123"],"description":"x"}`},
+			{"presentation_registration com 12 dígitos", `{"registration_number":"1","eans":["7891234567890"],"description":"x","presentation_registration":"123456789012"}`},
 		}
 
 		for _, tt := range tests {
@@ -97,10 +103,46 @@ func TestCreatePackage(t *testing.T) {
 	})
 }
 
+func TestCreatePackage_MultiplosEANs(t *testing.T) {
+	t.Run("aceita vários EANs, tira espaços e repetidos", func(t *testing.T) {
+		h, fake := newPackageHandler(t)
+		fake.SeedDrug("1023401230014", 7)
+
+		body := `{"registration_number":"1023401230014","description":"Advil 400",
+			"eans":[" 7891058001155 ","7891058017392","7891058001155"],
+			"presentation_registration":"1234567890014"}`
+		req := httptest.NewRequest(http.MethodPost, "/packages", strings.NewReader(body))
+		rec := httptest.NewRecorder()
+
+		h.CreatePackage(rec, req)
+
+		require.Equal(t, http.StatusCreated, rec.Code)
+		assert.Equal(t, []string{"7891058001155", "7891058017392"}, fake.LastCreateParams.Eans)
+		assert.Equal(t, "1234567890014", fake.LastCreateParams.PresentationRegistration.String)
+	})
+
+	t.Run("presentation_registration repetido devolve 409", func(t *testing.T) {
+		h, fake := newPackageHandler(t)
+		fake.SeedDrug("1023401230014", 7)
+		fake.SeedPackage(db.ListPackagesRow{DrugID: 7, Eans: []string{"7890000000001"},
+			PresentationRegistration: pgtype.Text{String: "1234567890014", Valid: true}})
+
+		body := `{"registration_number":"1023401230014","description":"x",
+			"eans":["7891058001155"],"presentation_registration":"1234567890014"}`
+		req := httptest.NewRequest(http.MethodPost, "/packages", strings.NewReader(body))
+		rec := httptest.NewRecorder()
+
+		h.CreatePackage(rec, req)
+
+		assert.Equal(t, http.StatusConflict, rec.Code)
+		assert.Contains(t, rec.Body.String(), "presentation_registration")
+	})
+}
+
 func TestGetPackageByID(t *testing.T) {
 	t.Run("encontrado devolve 200", func(t *testing.T) {
 		h, fake := newPackageHandler(t)
-		fake.SeedPackage(db.ListPackagesRow{ID: 1, DrugID: 3, Ean: "7891234567890", Description: "Caixa"})
+		fake.SeedPackage(db.ListPackagesRow{ID: 1, DrugID: 3, Eans: []string{"7891234567890"}, Description: "Caixa"})
 
 		req := httptest.NewRequest(http.MethodGet, "/packages/1", nil)
 		req.SetPathValue("id", "1")
@@ -112,7 +154,7 @@ func TestGetPackageByID(t *testing.T) {
 
 		var body map[string]any
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
-		assert.Equal(t, "7891234567890", body["ean"])
+		assert.Equal(t, []any{"7891234567890"}, body["eans"])
 	})
 
 	t.Run("id inexistente devolve 404", func(t *testing.T) {
@@ -141,11 +183,11 @@ func TestGetPackageByID(t *testing.T) {
 }
 
 func TestUpdatePackage(t *testing.T) {
-	updateBody := `{"drug_id":1,"ean":"7892222222222","description":"novo"}`
+	updateBody := `{"drug_id":1,"eans": ["7892222222222"],"description":"novo"}`
 
 	t.Run("atualiza e devolve 204", func(t *testing.T) {
 		h, fake := newPackageHandler(t)
-		fake.SeedPackage(db.ListPackagesRow{ID: 1, DrugID: 1, Ean: "7891111111111"})
+		fake.SeedPackage(db.ListPackagesRow{ID: 1, DrugID: 1, Eans: []string{"7891111111111"}})
 
 		req := httptest.NewRequest(http.MethodPut, "/packages/1", strings.NewReader(updateBody))
 		req.SetPathValue("id", "1")
@@ -154,6 +196,21 @@ func TestUpdatePackage(t *testing.T) {
 		h.UpdatePackage(rec, req)
 
 		assert.Equal(t, http.StatusNoContent, rec.Code)
+	})
+
+	t.Run("troca a lista de EANs inteira", func(t *testing.T) {
+		h, fake := newPackageHandler(t)
+		fake.SeedPackage(db.ListPackagesRow{ID: 1, DrugID: 1, Eans: []string{"7891111111111"}})
+
+		body := `{"drug_id":1,"description":"x","eans":["7891111111111","7893333333333"]}`
+		req := httptest.NewRequest(http.MethodPut, "/packages/1", strings.NewReader(body))
+		req.SetPathValue("id", "1")
+		rec := httptest.NewRecorder()
+
+		h.UpdatePackage(rec, req)
+
+		require.Equal(t, http.StatusNoContent, rec.Code)
+		assert.Equal(t, []string{"7891111111111", "7893333333333"}, fake.LastUpdateParams.Eans)
 	})
 
 	t.Run("id inexistente devolve 404", func(t *testing.T) {
@@ -170,8 +227,8 @@ func TestUpdatePackage(t *testing.T) {
 
 	t.Run("EAN de outra embalagem devolve 409", func(t *testing.T) {
 		h, fake := newPackageHandler(t)
-		fake.SeedPackage(db.ListPackagesRow{ID: 1, DrugID: 1, Ean: "7892222222222"})
-		fake.SeedPackage(db.ListPackagesRow{ID: 2, DrugID: 1, Ean: "7891111111111"})
+		fake.SeedPackage(db.ListPackagesRow{ID: 1, DrugID: 1, Eans: []string{"7892222222222"}})
+		fake.SeedPackage(db.ListPackagesRow{ID: 2, DrugID: 1, Eans: []string{"7891111111111"}})
 
 		req := httptest.NewRequest(http.MethodPut, "/packages/2", strings.NewReader(updateBody))
 		req.SetPathValue("id", "2")
@@ -190,9 +247,9 @@ func TestUpdatePackage(t *testing.T) {
 		}{
 			{"id não numérico", "abc", updateBody},
 			{"json quebrado", "1", `{"ean":`},
-			{"sem drug_id", "1", `{"ean":"7891111111111","description":"x"}`},
+			{"sem drug_id", "1", `{"eans": ["7891111111111"],"description":"x"}`},
 			{"sem ean", "1", `{"drug_id":1,"description":"x"}`},
-			{"sem description", "1", `{"drug_id":1,"ean":"7891111111111"}`},
+			{"sem description", "1", `{"drug_id":1,"eans": ["7891111111111"]}`},
 		}
 
 		for _, tt := range tests {
@@ -215,7 +272,7 @@ func TestUpdatePackage(t *testing.T) {
 func TestDeletePackage(t *testing.T) {
 	t.Run("remove e devolve 204", func(t *testing.T) {
 		h, fake := newPackageHandler(t)
-		fake.SeedPackage(db.ListPackagesRow{ID: 1, DrugID: 1, Ean: "7891111111111"})
+		fake.SeedPackage(db.ListPackagesRow{ID: 1, DrugID: 1, Eans: []string{"7891111111111"}})
 
 		req := httptest.NewRequest(http.MethodDelete, "/packages/1", nil)
 		req.SetPathValue("id", "1")

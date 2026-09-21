@@ -3,9 +3,11 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/db"
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/service"
@@ -20,27 +22,84 @@ func NewPackageHandler(s *service.PackageService) *PackageHandler {
 }
 
 type createPackageRequest struct {
-	RegistrationNumber string `json:"registration_number"`
-	Ean                string `json:"ean"`
-	Description        string `json:"description"`
+	RegistrationNumber       string   `json:"registration_number" example:"1234567890123"`
+	Eans                     []string `json:"eans" example:"7891058001155,7891058017392"`
+	Description              string   `json:"description" example:"400 mg, caixa com 20 cápsulas"`
+	PresentationRegistration string   `json:"presentation_registration,omitempty" example:"1234567890014"`
 }
 
 type updatePackageRequest struct {
-	DrugID      int64  `json:"drug_id"`
-	Ean         string `json:"ean"`
-	Description string `json:"description"`
+	DrugID                   int64    `json:"drug_id" example:"1"`
+	Eans                     []string `json:"eans" example:"7891058001155,7891058017392"`
+	Description              string   `json:"description" example:"400 mg, caixa com 20 cápsulas"`
+	PresentationRegistration string   `json:"presentation_registration,omitempty" example:"1234567890014"`
+}
+
+// normalizeEANs tira espaços, descarta vazios e repetidos, e valida o formato.
+// Aceita de 8 (EAN-8) a 13 (EAN-13) dígitos.
+func normalizeEANs(raw []string) ([]string, error) {
+	seen := make(map[string]bool, len(raw))
+	eans := make([]string, 0, len(raw))
+	for _, e := range raw {
+		e = strings.TrimSpace(e)
+		if e == "" || seen[e] {
+			continue
+		}
+		if !isDigits(e) || len(e) < 8 || len(e) > 13 {
+			return nil, fmt.Errorf("invalid ean %q: must have 8 to 13 digits", e)
+		}
+		seen[e] = true
+		eans = append(eans, e)
+	}
+	if len(eans) == 0 {
+		return nil, errors.New("at least one ean is required")
+	}
+	return eans, nil
+}
+
+// validatePresentationRegistration: opcional, mas se vier precisa ter 13 dígitos.
+func validatePresentationRegistration(s string) error {
+	if s != "" && (len(s) != 13 || !isDigits(s)) {
+		return errors.New("presentation_registration must have exactly 13 digits")
+	}
+	return nil
+}
+
+func isDigits(s string) bool {
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return s != ""
+}
+
+// packageErrorStatus traduz os erros de escrita do service para status HTTP.
+func packageErrorStatus(err error) (int, string, bool) {
+	switch {
+	case errors.Is(err, service.ErrPackageNotFound):
+		return http.StatusNotFound, "package not found", true
+	case errors.Is(err, service.ErrDrugNotFound):
+		return http.StatusNotFound, "drug not found", true
+	case errors.Is(err, service.ErrDuplicateEAN):
+		return http.StatusConflict, "ean already registered in another package", true
+	case errors.Is(err, service.ErrDuplicatePresentation):
+		return http.StatusConflict, "presentation_registration already exists", true
+	}
+	return 0, "", false
 }
 
 // CreatePackage godoc
-// @Summary      Cadastra uma embalagem (EAN) de um remédio
+// @Summary      Cadastra uma embalagem (apresentação) de um remédio
+// @Description  Uma embalagem pode ter vários EANs (ex.: código antigo e novo convivendo na prateleira).
 // @Tags         packages
 // @Accept       json
 // @Produce      json
 // @Param        body  body      createPackageRequest  true  "Dados da embalagem"
 // @Success      201   {object}  idResponse
 // @Failure      400   {string}  string  "json inválido ou campo obrigatório faltando"
-// @Failure      404   {string}  string  "drug not found for this registration_number"
-// @Failure      409   {string}  string  "ean already exists"
+// @Failure      404   {string}  string  "drug not found"
+// @Failure      409   {string}  string  "ean ou presentation_registration já cadastrado"
 // @Failure      500  {string}  string  "internal server error"
 // @Router       /packages [post]
 func (h *PackageHandler) CreatePackage(w http.ResponseWriter, r *http.Request) {
@@ -54,26 +113,29 @@ func (h *PackageHandler) CreatePackage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "registration_number is required", http.StatusBadRequest)
 		return
 	}
-	if req.Ean == "" {
-		http.Error(w, "ean is required", http.StatusBadRequest)
+	eans, err := normalizeEANs(req.Eans)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	req.Eans = eans
 	if req.Description == "" {
 		http.Error(w, "description is required", http.StatusBadRequest)
+		return
+	}
+	req.PresentationRegistration = strings.TrimSpace(req.PresentationRegistration)
+	if err := validatePresentationRegistration(req.PresentationRegistration); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	id, err := h.service.Create(r.Context(), service.CreatePackageInput(req))
 	if err != nil {
-		if errors.Is(err, service.ErrDrugNotFound) {
-			http.Error(w, "drug not found for this registration_number", http.StatusNotFound)
+		if status, msg, ok := packageErrorStatus(err); ok {
+			http.Error(w, msg, status)
 			return
 		}
-		if errors.Is(err, service.ErrDuplicateEAN) {
-			http.Error(w, "ean already exists", http.StatusConflict)
-			return
-		}
-		log.Printf("failed to create package %s: %v", req.Ean, err)
+		log.Printf("failed to create package %v: %v", req.Eans, err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -181,8 +243,8 @@ func (h *PackageHandler) GetPackageByID(w http.ResponseWriter, r *http.Request) 
 // @Param        body  body      updatePackageRequest  true  "Dados da embalagem"
 // @Success      204
 // @Failure      400  {string}  string  "id ou json inválido"
-// @Failure      404  {string}  string  "package not found"
-// @Failure      409  {string}  string  "ean already exists"
+// @Failure      404  {string}  string  "package not found / drug not found"
+// @Failure      409  {string}  string  "ean ou presentation_registration já cadastrado"
 // @Failure      500  {string}  string  "internal server error"
 // @Router       /packages/{id} [put]
 func (h *PackageHandler) UpdatePackage(w http.ResponseWriter, r *http.Request) {
@@ -202,23 +264,26 @@ func (h *PackageHandler) UpdatePackage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "drug_id is required", http.StatusBadRequest)
 		return
 	}
-	if req.Ean == "" {
-		http.Error(w, "ean is required", http.StatusBadRequest)
+	eans, err := normalizeEANs(req.Eans)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	req.Eans = eans
 	if req.Description == "" {
 		http.Error(w, "description is required", http.StatusBadRequest)
+		return
+	}
+	req.PresentationRegistration = strings.TrimSpace(req.PresentationRegistration)
+	if err := validatePresentationRegistration(req.PresentationRegistration); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	err = h.service.Update(r.Context(), id, service.UpdatePackageInput(req))
 	if err != nil {
-		if errors.Is(err, service.ErrPackageNotFound) {
-			http.Error(w, "package not found", http.StatusNotFound)
-			return
-		}
-		if errors.Is(err, service.ErrDuplicateEAN) {
-			http.Error(w, "ean already exists", http.StatusConflict)
+		if status, msg, ok := packageErrorStatus(err); ok {
+			http.Error(w, msg, status)
 			return
 		}
 		log.Printf("failed to update package %d: %v", id, err)

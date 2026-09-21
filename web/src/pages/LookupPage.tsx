@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { api, ApiError, errorMessage } from '../api'
 import { SUMMARY_TEXT_FIELDS, type EanSummary } from '../types'
+import { fmtDay } from '../components/format'
 
 /** Mostra o que o app do usuário final vai receber ao ler o código de barras. */
 export default function LookupPage() {
@@ -49,7 +50,10 @@ export default function LookupPage() {
             <p className="muted">
               {result.active_ingredient} · {result.manufacturer} · Reg. {result.registration_number}
             </p>
-            <p className="muted small">EAN {result.ean} — {result.description}</p>
+            <p className="muted small">
+              EAN {result.ean} — {result.description}
+              {result.presentation_registration && <> · Apresentação {result.presentation_registration}</>}
+            </p>
           </div>
           {SUMMARY_TEXT_FIELDS.map((f) =>
             result[f.key] ? (
@@ -58,6 +62,19 @@ export default function LookupPage() {
                 <p>{result[f.key]}</p>
               </div>
             ) : null,
+          )}
+          {!result.what_is_it_for && (
+            <p className="muted">Este remédio ainda não tem bula simplificada revisada.</p>
+          )}
+          {(result.leaflet_expedient || result.leaflet_published_at || result.source_url) && (
+            <p className="leaflet-foot muted small">
+              Baseado na bula
+              {result.leaflet_expedient && <> expediente {result.leaflet_expedient}</>}
+              {result.leaflet_published_at && <> publicada em {fmtDay(result.leaflet_published_at)}</>}
+              {result.source_url && (
+                <> · <a href={result.source_url} target="_blank" rel="noreferrer">fonte</a></>
+              )}
+            </p>
           )}
         </div>
       )}

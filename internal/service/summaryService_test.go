@@ -210,3 +210,55 @@ func TestSummaryService_List(t *testing.T) {
 		assert.Empty(t, rows)
 	})
 }
+
+func TestSummaryService_NovasSecoesEVersaoDaBula(t *testing.T) {
+	t.Run("missed_dose, warnings e versão da bula vão para o banco", func(t *testing.T) {
+		fake := testutil.NewFakeSummaryQuerier()
+		svc := service.NewSummaryService(fake)
+
+		in := validCreateInput()
+		in.MissedDose = "Tome assim que lembrar"
+		in.Warnings = "Não use com álcool"
+		in.LeafletExpedient = "0123456/24-5"
+		in.LeafletPublishedAt = "2024-05-31"
+
+		_, err := svc.Create(context.Background(), in)
+		require.NoError(t, err)
+
+		got := fake.LastCreateParams
+		assert.Equal(t, "Tome assim que lembrar", got.MissedDose.String)
+		assert.Equal(t, "Não use com álcool", got.Warnings.String)
+		assert.Equal(t, "0123456/24-5", got.LeafletExpedient.String)
+		require.True(t, got.LeafletPublishedAt.Valid)
+		assert.Equal(t, "2024-05-31", got.LeafletPublishedAt.Time.Format("2006-01-02"))
+	})
+
+	t.Run("data vazia vira NULL", func(t *testing.T) {
+		fake := testutil.NewFakeSummaryQuerier()
+		svc := service.NewSummaryService(fake)
+
+		_, err := svc.Create(context.Background(), validCreateInput())
+
+		require.NoError(t, err)
+		assert.False(t, fake.LastCreateParams.LeafletPublishedAt.Valid)
+		assert.False(t, fake.LastCreateParams.MissedDose.Valid)
+	})
+
+	t.Run("data em formato errado vira ErrInvalidLeafletDate e não chega no banco", func(t *testing.T) {
+		fake := testutil.NewFakeSummaryQuerier()
+		svc := service.NewSummaryService(fake)
+
+		in := validCreateInput()
+		in.LeafletPublishedAt = "31/05/2024"
+		_, err := svc.Create(context.Background(), in)
+
+		assert.ErrorIs(t, err, service.ErrInvalidLeafletDate)
+		assert.Zero(t, fake.CreateCalls)
+
+		err = svc.Update(context.Background(), 1, service.UpdateSummaryInput{
+			WhatIsItFor: "x", Posology: "y", SourceURL: "z", LeafletPublishedAt: "2024-13-01",
+		})
+		assert.ErrorIs(t, err, service.ErrInvalidLeafletDate)
+		assert.Zero(t, fake.UpdateCalls)
+	})
+}

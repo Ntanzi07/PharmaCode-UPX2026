@@ -478,3 +478,47 @@ func TestIDInvalidoDevolve400(t *testing.T) {
 		assert.Equal(t, http.StatusBadRequest, rec.Code)
 	})
 }
+
+func TestSummary_VersaoDaBula(t *testing.T) {
+	t.Run("data de publicação inválida devolve 400 no create e no update", func(t *testing.T) {
+		h, fake := newTestHandler(t)
+		fake.Seed(db.GetSummaryByIDRow{ID: 1, DrugID: 1})
+
+		body := `{"drug_id":2,"what_is_it_for":"x","posology":"y","source_url":"z","leaflet_published_at":"31/05/2024"}`
+		req := httptest.NewRequest(http.MethodPost, "/summaries", strings.NewReader(body))
+		rec := httptest.NewRecorder()
+		h.CreateSummary(rec, req)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+		req = httptest.NewRequest(http.MethodPut, "/summaries/1", strings.NewReader(body))
+		req.SetPathValue("id", "1")
+		rec = httptest.NewRecorder()
+		h.UpdateSummary(rec, req)
+		assert.Equal(t, http.StatusBadRequest, rec.Code)
+	})
+
+	t.Run("GET devolve as seções novas e a data como YYYY-MM-DD", func(t *testing.T) {
+		h, _ := newTestHandler(t)
+
+		body := `{"drug_id":1,"what_is_it_for":"x","posology":"y","source_url":"z",
+			"missed_dose":"Tome assim que lembrar","warnings":"Cuidado",
+			"leaflet_expedient":"0123456/24-5","leaflet_published_at":"2024-05-31"}`
+		req := httptest.NewRequest(http.MethodPost, "/summaries", strings.NewReader(body))
+		rec := httptest.NewRecorder()
+		h.CreateSummary(rec, req)
+		require.Equal(t, http.StatusCreated, rec.Code)
+
+		req = httptest.NewRequest(http.MethodGet, "/summaries/1", nil)
+		req.SetPathValue("id", "1")
+		rec = httptest.NewRecorder()
+		h.GetSummaryByID(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+
+		var got map[string]any
+		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &got))
+		assert.Equal(t, "Tome assim que lembrar", got["missed_dose"])
+		assert.Equal(t, "Cuidado", got["warnings"])
+		assert.Equal(t, "0123456/24-5", got["leaflet_expedient"])
+		assert.Equal(t, "2024-05-31", got["leaflet_published_at"])
+	})
+}

@@ -2,11 +2,11 @@
   --bg: #f5f7f9;
   --surface: #ffffff;
   --border: #e3e8ee;
-  --text: #1c2530;
-  --muted: #6b7785;
+  --text: #262626;
+  --muted: #838383;
   --primary: #0f8a6c;
   --primary-hover: #0c735a;
-  --danger: #c43d3d;
+  --danger: #ff4141;
   --warn-bg: #fff4dc;
   --warn-text: #8a5a00;
   --ok-bg: #e2f5ee;
@@ -18,14 +18,14 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #11161c;
-    --surface: #182029;
-    --border: #2a3542;
+    --bg: #121212;
+    --surface: #272727;
+    --border: #424242;
     --text: #e6ebf0;
-    --muted: #8d9aa8;
+    --muted: #e6ebf0;
     --primary: #2bb38f;
     --primary-hover: #34c9a1;
-    --danger: #e26a6a;
+    --danger: #fd6060;
     --warn-bg: #3a2f14;
     --warn-text: #f0c060;
     --ok-bg: #133a2f;
@@ -119,12 +119,14 @@ textarea { resize: vertical; }
 }
 table { width: 100%; border-collapse: collapse; }
 th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
-th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; background: var(--bg); }
+th { white-space: nowrap; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; background: var(--bg); }
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr:hover td { background: color-mix(in srgb, var(--primary) 4%, transparent); }
 td.actions { white-space: nowrap; text-align: right; }
 td.actions button { margin-left: 6px; padding: 4px 10px; font-size: 13px; }
-td.clamp { max-width: 360px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+/* o clamp fica numa div dentro da célula: display:-webkit-box direto no <td> quebra a tabela */
+td.purpose { width: 38%; min-width: 220px; }
+.clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 td.empty { text-align: center; color: var(--muted); padding: 32px; }
 .mono { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 13px; }
 .muted { color: var(--muted); }
@@ -171,6 +173,35 @@ td.empty { text-align: center; color: var(--muted); padding: 32px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 
+/* ---------- busca de remédio ---------- */
+.picker { position: relative; }
+.picker-selected {
+  width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  text-align: left; padding: 8px 10px; background: var(--surface);
+}
+.picker-list {
+  position: absolute; z-index: 10; left: 0; right: 0; top: calc(100% + 4px);
+  margin: 0; padding: 4px; list-style: none;
+  max-height: 260px; overflow-y: auto;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+}
+.picker-list li { padding: 8px 10px; border-radius: 6px; cursor: pointer; }
+.picker-list li.active { background: color-mix(in srgb, var(--primary) 16%, transparent); }
+.picker-list li.picker-empty { cursor: default; color: var(--muted); }
+
+/* ---------- EANs & grupos ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
+.ean-list { display: flex; flex-direction: column; gap: 6px; }
+.ean-row { display: flex; gap: 6px; align-items: center; }
+.ean-row input { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; }
+button.link { border: 0; background: none; color: var(--primary); padding: 2px 0; align-self: flex-start; font-weight: 600; }
+button.link:hover { background: none; text-decoration: underline; }
+fieldset.group { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px 14px; margin: 0; }
+fieldset.group legend { font-weight: 600; font-size: 13px; padding: 0 6px; }
+fieldset.group > .hint { margin: 0 0 10px; font-size: 12px; }
+
 /* ---------- lookup ---------- */
 .search { display: flex; gap: 8px; margin-bottom: 16px; max-width: 560px; }
 .search input { font-size: 16px; }
@@ -179,6 +210,8 @@ td.empty { text-align: center; color: var(--muted); padding: 32px; }
 .leaflet-head p { margin: 4px 0 0; }
 .leaflet-block { margin-bottom: 16px; }
 .leaflet-block p { margin: 0; white-space: pre-wrap; }
+.leaflet-foot { border-top: 1px solid var(--border); padding-top: 12px; margin: 8px 0 0; }
+.leaflet-foot a { color: var(--primary); }
 
 /* ---------- toasts ---------- */
 .toasts { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 30; }

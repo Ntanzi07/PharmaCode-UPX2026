@@ -327,6 +327,7 @@ const docTemplate = `{
                 }
             },
             "post": {
+                "description": "Uma embalagem pode ter vários EANs (ex.: código antigo e novo convivendo na prateleira).",
                 "consumes": [
                     "application/json"
                 ],
@@ -336,7 +337,7 @@ const docTemplate = `{
                 "tags": [
                     "packages"
                 ],
-                "summary": "Cadastra uma embalagem (EAN) de um remédio",
+                "summary": "Cadastra uma embalagem (apresentação) de um remédio",
                 "parameters": [
                     {
                         "description": "Dados da embalagem",
@@ -362,13 +363,13 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "drug not found for this registration_number",
+                        "description": "drug not found",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "409": {
-                        "description": "ean already exists",
+                        "description": "ean ou presentation_registration já cadastrado",
                         "schema": {
                             "type": "string"
                         }
@@ -464,13 +465,13 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "package not found",
+                        "description": "package not found / drug not found",
                         "schema": {
                             "type": "string"
                         }
                     },
                     "409": {
-                        "description": "ean already exists",
+                        "description": "ean ou presentation_registration já cadastrado",
                         "schema": {
                             "type": "string"
                         }
@@ -880,11 +881,17 @@ const docTemplate = `{
                 "drug_id": {
                     "type": "integer"
                 },
-                "ean": {
-                    "type": "string"
+                "eans": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "id": {
                     "type": "integer"
+                },
+                "presentation_registration": {
+                    "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
@@ -909,7 +916,16 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "leaflet_expedient": {
+                    "type": "string"
+                },
+                "leaflet_published_at": {
+                    "type": "string"
+                },
                 "mechanism_of_action": {
+                    "type": "string"
+                },
+                "missed_dose": {
                     "type": "string"
                 },
                 "posology": {
@@ -931,6 +947,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                },
+                "warnings": {
                     "type": "string"
                 },
                 "what_is_it_for": {
@@ -965,13 +984,25 @@ const docTemplate = `{
                 "ean": {
                     "type": "string"
                 },
+                "leaflet_expedient": {
+                    "type": "string"
+                },
+                "leaflet_published_at": {
+                    "type": "string"
+                },
                 "manufacturer": {
                     "type": "string"
                 },
                 "mechanism_of_action": {
                     "type": "string"
                 },
+                "missed_dose": {
+                    "type": "string"
+                },
                 "posology": {
+                    "type": "string"
+                },
+                "presentation_registration": {
                     "type": "string"
                 },
                 "registration_number": {
@@ -984,6 +1015,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "storage": {
+                    "type": "string"
+                },
+                "warnings": {
                     "type": "string"
                 },
                 "what_is_it_for": {
@@ -1012,7 +1046,16 @@ const docTemplate = `{
                 "id": {
                     "type": "integer"
                 },
+                "leaflet_expedient": {
+                    "type": "string"
+                },
+                "leaflet_published_at": {
+                    "type": "string"
+                },
                 "mechanism_of_action": {
+                    "type": "string"
+                },
+                "missed_dose": {
                     "type": "string"
                 },
                 "posology": {
@@ -1034,6 +1077,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                },
+                "warnings": {
                     "type": "string"
                 },
                 "what_is_it_for": {
@@ -1076,11 +1122,17 @@ const docTemplate = `{
                 "drug_id": {
                     "type": "integer"
                 },
-                "ean": {
-                    "type": "string"
+                "eans": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "id": {
                     "type": "integer"
+                },
+                "presentation_registration": {
+                    "type": "string"
                 },
                 "updated_at": {
                     "type": "string"
@@ -1101,6 +1153,12 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "integer"
+                },
+                "leaflet_expedient": {
+                    "type": "string"
+                },
+                "leaflet_published_at": {
+                    "type": "string"
                 },
                 "reviewed_at": {
                     "type": "string"
@@ -1140,13 +1198,26 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "400 mg, caixa com 20 cápsulas"
                 },
-                "ean": {
-                    "type": "string"
+                "eans": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "7891058001155",
+                        "7891058017392"
+                    ]
+                },
+                "presentation_registration": {
+                    "type": "string",
+                    "example": "1234567890014"
                 },
                 "registration_number": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "1234567890123"
                 }
             }
         },
@@ -1165,7 +1236,20 @@ const docTemplate = `{
                 "drug_interactions": {
                     "type": "string"
                 },
+                "leaflet_expedient": {
+                    "description": "Versão da bula oficial que foi resumida",
+                    "type": "string",
+                    "example": "0123456/24-5"
+                },
+                "leaflet_published_at": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2024-05-31"
+                },
                 "mechanism_of_action": {
+                    "type": "string"
+                },
+                "missed_dose": {
                     "type": "string"
                 },
                 "posology": {
@@ -1178,6 +1262,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "storage": {
+                    "type": "string"
+                },
+                "warnings": {
                     "type": "string"
                 },
                 "what_is_it_for": {
@@ -1221,13 +1308,26 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "description": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "400 mg, caixa com 20 cápsulas"
                 },
                 "drug_id": {
-                    "type": "integer"
+                    "type": "integer",
+                    "example": 1
                 },
-                "ean": {
-                    "type": "string"
+                "eans": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "7891058001155",
+                        "7891058017392"
+                    ]
+                },
+                "presentation_registration": {
+                    "type": "string",
+                    "example": "1234567890014"
                 }
             }
         },
@@ -1243,7 +1343,20 @@ const docTemplate = `{
                 "drug_interactions": {
                     "type": "string"
                 },
+                "leaflet_expedient": {
+                    "description": "Versão da bula oficial que foi resumida",
+                    "type": "string",
+                    "example": "0123456/24-5"
+                },
+                "leaflet_published_at": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2024-05-31"
+                },
                 "mechanism_of_action": {
+                    "type": "string"
+                },
+                "missed_dose": {
                     "type": "string"
                 },
                 "posology": {
@@ -1256,6 +1369,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "storage": {
+                    "type": "string"
+                },
+                "warnings": {
                     "type": "string"
                 },
                 "what_is_it_for": {

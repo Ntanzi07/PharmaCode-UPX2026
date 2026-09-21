@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import DrugsPage from './pages/DrugsPage'
 import PackagesPage from './pages/PackagesPage'
 import SummariesPage from './pages/SummariesPage'
@@ -21,6 +21,13 @@ function initialTab(): TabKey {
 
 export default function App() {
   const [tab, setTab] = useState<TabKey>(initialTab)
+
+  // Voltar/avançar do navegador troca de aba
+  useEffect(() => {
+    const onHash = () => setTab(initialTab())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
 
   const select = (k: TabKey) => {
     setTab(k)

@@ -50,7 +50,7 @@ func (q *Queries) DeleteDrug(ctx context.Context, id int64) (int64, error) {
 }
 
 const getDrugByEAN = `-- name: GetDrugByEAN :one
-SELECT p.ean,
+SELECT pe.ean,
        d.id,
        d.registration_number,
        d.brand_name,
@@ -58,10 +58,12 @@ SELECT p.ean,
        d.manufacturer,
        d.updated_at,
        d.created_at
-FROM drugs AS d
+FROM package_eans AS pe
          INNER JOIN packages AS p
+                    ON p.id = pe.package_id
+         INNER JOIN drugs AS d
                     ON d.id = p.drug_id
-WHERE p.ean = $1
+WHERE pe.ean = $1
 `
 
 type GetDrugByEANRow struct {
@@ -92,14 +94,17 @@ func (q *Queries) GetDrugByEAN(ctx context.Context, ean string) (GetDrugByEANRow
 }
 
 const getSummaryByEAN = `-- name: GetSummaryByEAN :one
-SELECT p.ean,
+SELECT pe.ean,
        p.description,
+       p.presentation_registration,
        d.registration_number,
        d.brand_name,
        d.active_ingredient,
        d.manufacturer,
        s.what_is_it_for,
        s.posology,
+       s.missed_dose,
+       s.warnings,
        s.adverse_effects,
        s.drug_interactions,
        s.contraindications,
@@ -107,32 +112,41 @@ SELECT p.ean,
        s.when_to_seek_help,
        s.mechanism_of_action,
        s.storage,
-       s.source_url
-FROM drugs AS d
+       s.source_url,
+       s.leaflet_expedient,
+       s.leaflet_published_at
+FROM package_eans AS pe
          INNER JOIN packages AS p
+                    ON p.id = pe.package_id
+         INNER JOIN drugs AS d
                     ON d.id = p.drug_id
          LEFT JOIN summaries AS s
                    ON d.id = s.drug_id AND s.reviewed_at IS NOT NULL
-WHERE p.ean = $1
+WHERE pe.ean = $1
 `
 
 type GetSummaryByEANRow struct {
-	Ean                string      `json:"ean"`
-	Description        string      `json:"description"`
-	RegistrationNumber string      `json:"registration_number"`
-	BrandName          pgtype.Text `json:"brand_name"`
-	ActiveIngredient   string      `json:"active_ingredient"`
-	Manufacturer       string      `json:"manufacturer"`
-	WhatIsItFor        pgtype.Text `json:"what_is_it_for"`
-	Posology           pgtype.Text `json:"posology"`
-	AdverseEffects     pgtype.Text `json:"adverse_effects"`
-	DrugInteractions   pgtype.Text `json:"drug_interactions"`
-	Contraindications  pgtype.Text `json:"contraindications"`
-	SideEffects        pgtype.Text `json:"side_effects"`
-	WhenToSeekHelp     pgtype.Text `json:"when_to_seek_help"`
-	MechanismOfAction  pgtype.Text `json:"mechanism_of_action"`
-	Storage            pgtype.Text `json:"storage"`
-	SourceUrl          pgtype.Text `json:"source_url"`
+	Ean                      string      `json:"ean"`
+	Description              string      `json:"description"`
+	PresentationRegistration pgtype.Text `json:"presentation_registration"`
+	RegistrationNumber       string      `json:"registration_number"`
+	BrandName                pgtype.Text `json:"brand_name"`
+	ActiveIngredient         string      `json:"active_ingredient"`
+	Manufacturer             string      `json:"manufacturer"`
+	WhatIsItFor              pgtype.Text `json:"what_is_it_for"`
+	Posology                 pgtype.Text `json:"posology"`
+	MissedDose               pgtype.Text `json:"missed_dose"`
+	Warnings                 pgtype.Text `json:"warnings"`
+	AdverseEffects           pgtype.Text `json:"adverse_effects"`
+	DrugInteractions         pgtype.Text `json:"drug_interactions"`
+	Contraindications        pgtype.Text `json:"contraindications"`
+	SideEffects              pgtype.Text `json:"side_effects"`
+	WhenToSeekHelp           pgtype.Text `json:"when_to_seek_help"`
+	MechanismOfAction        pgtype.Text `json:"mechanism_of_action"`
+	Storage                  pgtype.Text `json:"storage"`
+	SourceUrl                pgtype.Text `json:"source_url"`
+	LeafletExpedient         pgtype.Text `json:"leaflet_expedient"`
+	LeafletPublishedAt       pgtype.Date `json:"leaflet_published_at"`
 }
 
 func (q *Queries) GetSummaryByEAN(ctx context.Context, ean string) (GetSummaryByEANRow, error) {
@@ -141,12 +155,15 @@ func (q *Queries) GetSummaryByEAN(ctx context.Context, ean string) (GetSummaryBy
 	err := row.Scan(
 		&i.Ean,
 		&i.Description,
+		&i.PresentationRegistration,
 		&i.RegistrationNumber,
 		&i.BrandName,
 		&i.ActiveIngredient,
 		&i.Manufacturer,
 		&i.WhatIsItFor,
 		&i.Posology,
+		&i.MissedDose,
+		&i.Warnings,
 		&i.AdverseEffects,
 		&i.DrugInteractions,
 		&i.Contraindications,
@@ -155,6 +172,8 @@ func (q *Queries) GetSummaryByEAN(ctx context.Context, ean string) (GetSummaryBy
 		&i.MechanismOfAction,
 		&i.Storage,
 		&i.SourceUrl,
+		&i.LeafletExpedient,
+		&i.LeafletPublishedAt,
 	)
 	return i, err
 }

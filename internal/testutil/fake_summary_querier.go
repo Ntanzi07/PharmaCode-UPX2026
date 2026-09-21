@@ -21,6 +21,11 @@ func PgError(code string) error {
 	return &pgconn.PgError{Code: code, Message: "fake postgres error " + code}
 }
 
+// PgConstraintError é um PgError que também informa qual constraint falhou.
+func PgConstraintError(code, constraint string) error {
+	return &pgconn.PgError{Code: code, ConstraintName: constraint, Message: "fake postgres error " + code}
+}
+
 type FakeSummaryQuerier struct {
 	mu     sync.Mutex
 	nextID int64
@@ -84,18 +89,22 @@ func (f *FakeSummaryQuerier) CreateSummary(ctx context.Context, arg db.CreateSum
 	id := f.nextID
 	f.nextID++
 	f.rows[id] = db.GetSummaryByIDRow{
-		ID:                id,
-		DrugID:            arg.DrugID,
-		WhatIsItFor:       arg.WhatIsItFor,
-		Posology:          arg.Posology,
-		AdverseEffects:    arg.AdverseEffects,
-		DrugInteractions:  arg.DrugInteractions,
-		Contraindications: arg.Contraindications,
-		SideEffects:       arg.SideEffects,
-		WhenToSeekHelp:    arg.WhenToSeekHelp,
-		MechanismOfAction: arg.MechanismOfAction,
-		Storage:           arg.Storage,
-		SourceUrl:         arg.SourceUrl,
+		ID:                 id,
+		DrugID:             arg.DrugID,
+		WhatIsItFor:        arg.WhatIsItFor,
+		Posology:           arg.Posology,
+		MissedDose:         arg.MissedDose,
+		Warnings:           arg.Warnings,
+		AdverseEffects:     arg.AdverseEffects,
+		DrugInteractions:   arg.DrugInteractions,
+		Contraindications:  arg.Contraindications,
+		SideEffects:        arg.SideEffects,
+		WhenToSeekHelp:     arg.WhenToSeekHelp,
+		MechanismOfAction:  arg.MechanismOfAction,
+		Storage:            arg.Storage,
+		SourceUrl:          arg.SourceUrl,
+		LeafletExpedient:   arg.LeafletExpedient,
+		LeafletPublishedAt: arg.LeafletPublishedAt,
 	}
 	return id, nil
 }
@@ -119,6 +128,8 @@ func (f *FakeSummaryQuerier) UpdateSummary(ctx context.Context, arg db.UpdateSum
 
 	row.WhatIsItFor = arg.WhatIsItFor
 	row.Posology = arg.Posology
+	row.MissedDose = arg.MissedDose
+	row.Warnings = arg.Warnings
 	row.AdverseEffects = arg.AdverseEffects
 	row.DrugInteractions = arg.DrugInteractions
 	row.Contraindications = arg.Contraindications
@@ -127,6 +138,8 @@ func (f *FakeSummaryQuerier) UpdateSummary(ctx context.Context, arg db.UpdateSum
 	row.MechanismOfAction = arg.MechanismOfAction
 	row.Storage = arg.Storage
 	row.SourceUrl = arg.SourceUrl
+	row.LeafletExpedient = arg.LeafletExpedient
+	row.LeafletPublishedAt = arg.LeafletPublishedAt
 	f.rows[arg.ID] = row
 
 	return 1, nil
@@ -190,13 +203,15 @@ func (f *FakeSummaryQuerier) ListSummaries(ctx context.Context, arg db.ListSumma
 	for _, id := range ids {
 		row := f.rows[id]
 		out = append(out, db.ListSummariesRow{
-			ID:          row.ID,
-			DrugID:      row.DrugID,
-			WhatIsItFor: row.WhatIsItFor,
-			SourceUrl:   row.SourceUrl,
-			ReviewedBy:  row.ReviewedBy,
-			ReviewedAt:  row.ReviewedAt,
-			UpdatedAt:   row.UpdatedAt,
+			ID:                 row.ID,
+			DrugID:             row.DrugID,
+			WhatIsItFor:        row.WhatIsItFor,
+			SourceUrl:          row.SourceUrl,
+			LeafletExpedient:   row.LeafletExpedient,
+			LeafletPublishedAt: row.LeafletPublishedAt,
+			ReviewedBy:         row.ReviewedBy,
+			ReviewedAt:         row.ReviewedAt,
+			UpdatedAt:          row.UpdatedAt,
 		})
 	}
 

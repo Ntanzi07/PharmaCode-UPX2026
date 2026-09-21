@@ -28,14 +28,17 @@ ORDER BY brand_name NULLS FIRST LIMIT $1
 OFFSET $2;
 
 -- name: GetSummaryByEAN :one
-SELECT p.ean,
+SELECT pe.ean,
        p.description,
+       p.presentation_registration,
        d.registration_number,
        d.brand_name,
        d.active_ingredient,
        d.manufacturer,
        s.what_is_it_for,
        s.posology,
+       s.missed_dose,
+       s.warnings,
        s.adverse_effects,
        s.drug_interactions,
        s.contraindications,
@@ -43,16 +46,20 @@ SELECT p.ean,
        s.when_to_seek_help,
        s.mechanism_of_action,
        s.storage,
-       s.source_url
-FROM drugs AS d
+       s.source_url,
+       s.leaflet_expedient,
+       s.leaflet_published_at
+FROM package_eans AS pe
          INNER JOIN packages AS p
+                    ON p.id = pe.package_id
+         INNER JOIN drugs AS d
                     ON d.id = p.drug_id
          LEFT JOIN summaries AS s
                    ON d.id = s.drug_id AND s.reviewed_at IS NOT NULL
-WHERE p.ean = $1;
+WHERE pe.ean = $1;
 
 -- name: GetDrugByEAN :one
-SELECT p.ean,
+SELECT pe.ean,
        d.id,
        d.registration_number,
        d.brand_name,
@@ -60,7 +67,9 @@ SELECT p.ean,
        d.manufacturer,
        d.updated_at,
        d.created_at
-FROM drugs AS d
+FROM package_eans AS pe
          INNER JOIN packages AS p
+                    ON p.id = pe.package_id
+         INNER JOIN drugs AS d
                     ON d.id = p.drug_id
-WHERE p.ean = $1;
+WHERE pe.ean = $1;

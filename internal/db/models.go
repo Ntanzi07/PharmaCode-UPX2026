@@ -19,29 +19,40 @@ type Drug struct {
 }
 
 type Package struct {
-	ID          int64              `json:"id"`
-	DrugID      int64              `json:"drug_id"`
-	Ean         string             `json:"ean"`
-	Description string             `json:"description"`
-	CreatedAt   pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt   pgtype.Timestamptz `json:"updated_at"`
+	ID                       int64              `json:"id"`
+	DrugID                   int64              `json:"drug_id"`
+	Description              string             `json:"description"`
+	CreatedAt                pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt                pgtype.Timestamptz `json:"updated_at"`
+	PresentationRegistration pgtype.Text        `json:"presentation_registration"`
+}
+
+type PackageEan struct {
+	ID        int64              `json:"id"`
+	PackageID int64              `json:"package_id"`
+	Ean       string             `json:"ean"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
 
 type Summary struct {
-	ID                int64              `json:"id"`
-	DrugID            int64              `json:"drug_id"`
-	WhatIsItFor       string             `json:"what_is_it_for"`
-	Posology          string             `json:"posology"`
-	AdverseEffects    pgtype.Text        `json:"adverse_effects"`
-	DrugInteractions  pgtype.Text        `json:"drug_interactions"`
-	Contraindications pgtype.Text        `json:"contraindications"`
-	SideEffects       pgtype.Text        `json:"side_effects"`
-	WhenToSeekHelp    pgtype.Text        `json:"when_to_seek_help"`
-	MechanismOfAction pgtype.Text        `json:"mechanism_of_action"`
-	Storage           pgtype.Text        `json:"storage"`
-	SourceUrl         string             `json:"source_url"`
-	ReviewedBy        pgtype.Text        `json:"reviewed_by"`
-	ReviewedAt        pgtype.Timestamptz `json:"reviewed_at"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
-	UpdatedAt         pgtype.Timestamptz `json:"updated_at"`
+	ID                 int64              `json:"id"`
+	DrugID             int64              `json:"drug_id"`
+	WhatIsItFor        string             `json:"what_is_it_for"`
+	Posology           string             `json:"posology"`
+	AdverseEffects     pgtype.Text        `json:"adverse_effects"`
+	DrugInteractions   pgtype.Text        `json:"drug_interactions"`
+	Contraindications  pgtype.Text        `json:"contraindications"`
+	SideEffects        pgtype.Text        `json:"side_effects"`
+	WhenToSeekHelp     pgtype.Text        `json:"when_to_seek_help"`
+	MechanismOfAction  pgtype.Text        `json:"mechanism_of_action"`
+	Storage            pgtype.Text        `json:"storage"`
+	SourceUrl          string             `json:"source_url"`
+	ReviewedBy         pgtype.Text        `json:"reviewed_by"`
+	ReviewedAt         pgtype.Timestamptz `json:"reviewed_at"`
+	CreatedAt          pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+	MissedDose         pgtype.Text        `json:"missed_dose"`
+	Warnings           pgtype.Text        `json:"warnings"`
+	LeafletExpedient   pgtype.Text        `json:"leaflet_expedient"`
+	LeafletPublishedAt pgtype.Date        `json:"leaflet_published_at"`
 }
