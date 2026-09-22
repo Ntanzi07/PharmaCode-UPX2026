@@ -8,14 +8,14 @@ type Props = {
   autoFocus?: boolean
 }
 
-/** Tira acento e caixa para a busca: "IBUPROFÉNO" encontra "ibuprofeno". */
+/** Strips accents and case for searching: "IBUPROFÉNO" matches "ibuprofeno". */
 const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 const MAX_RESULTS = 50
 
 /**
- * Campo de busca de remédio: digite parte do nome comercial, do princípio ativo
- * ou do número de registro e escolha na lista (mouse ou ↑ ↓ Enter).
+ * Drug search field: type part of the brand name, active ingredient
+ * or registration number and pick from the list (mouse or ↑ ↓ Enter).
  */
 export default function DrugPicker({ drugs, value, onChange, autoFocus }: Props) {
   const selected = drugs.find((d) => d.id === value)
@@ -34,7 +34,7 @@ export default function DrugPicker({ drugs, value, onChange, autoFocus }: Props)
     return hits.slice(0, MAX_RESULTS)
   }, [drugs, query])
 
-  // Fecha ao clicar fora
+  // Close when clicking outside
   useEffect(() => {
     const onDown = (e: MouseEvent) => {
       if (!boxRef.current?.contains(e.target as Node)) setOpen(false)
@@ -43,7 +43,7 @@ export default function DrugPicker({ drugs, value, onChange, autoFocus }: Props)
     return () => document.removeEventListener('mousedown', onDown)
   }, [])
 
-  // Mantém o item ativo visível ao navegar pelo teclado
+  // Keep the active item visible while navigating with the keyboard
   useEffect(() => {
     listRef.current?.children[active]?.scrollIntoView({ block: 'nearest' })
   }, [active])
@@ -68,7 +68,7 @@ export default function DrugPicker({ drugs, value, onChange, autoFocus }: Props)
         pick(results[active])
       }
     } else if (e.key === 'Escape' && open) {
-      // não deixa o Esc fechar o modal inteiro, só a lista
+      // don't let Esc close the whole modal, only the list
       e.stopPropagation()
       e.nativeEvent.stopImmediatePropagation()
       setOpen(false)
@@ -113,7 +113,7 @@ export default function DrugPicker({ drugs, value, onChange, autoFocus }: Props)
               className={i === active ? 'active' : undefined}
               onMouseEnter={() => setActive(i)}
               onMouseDown={(e) => {
-                e.preventDefault() // não tira o foco antes do clique contar
+                e.preventDefault() // keep focus until the click is registered
                 pick(d)
               }}
             >

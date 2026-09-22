@@ -20,9 +20,9 @@ export type Package = {
   id: number
   drug_id: number
   description: string
-  /** Registro da apresentação na Anvisa (13 dígitos), ponte com a CMED */
+  /** Anvisa presentation registration (13 digits), the link to CMED */
   presentation_registration: string | null
-  /** Uma apresentação pode ter mais de um código de barras na prateleira */
+  /** A presentation can have more than one barcode on the shelf */
   eans: string[]
   updated_at: string | null
 }
@@ -61,7 +61,7 @@ export const SUMMARY_TEXT_FIELDS = [
 
 export type SummaryTextKey = (typeof SUMMARY_TEXT_FIELDS)[number]['key']
 
-/** Versão da bula oficial que foi resumida (expediente e data de publicação YYYY-MM-DD) */
+/** Version of the official leaflet that was summarized (filing number and publication date YYYY-MM-DD) */
 type LeafletVersion = { leaflet_expedient: string; leaflet_published_at: string }
 
 export type SummaryInput = Record<SummaryTextKey, string> & { source_url: string } & LeafletVersion
@@ -87,7 +87,7 @@ export type EanSummary = {
   leaflet_published_at: string | null
 } & { [K in SummaryTextKey]: string | null }
 
-// ---------- usuários e login ----------
+// ---------- users and login ----------
 export type Role = 'editor' | 'reviewer' | 'admin'
 
 export const ROLE_LABEL: Record<Role, string> = {
@@ -102,10 +102,10 @@ export const ROLE_HINT: Record<Role, string> = {
   admin: 'Tudo do revisor + gerencia usuários.',
 }
 
-/** Usuário logado (GET /auth/me) */
+/** Logged-in user (GET /auth/me) */
 export type User = { id: number; email: string; name: string; role: Role }
 
-/** Linha da lista de usuários (GET /users) */
+/** Row of the user list (GET /users) */
 export type UserRow = User & { active: boolean; created_at: string | null; updated_at: string | null }
 
 export type UserCreate = { name: string; email: string; password: string; role: Role }

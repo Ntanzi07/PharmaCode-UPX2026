@@ -26,7 +26,7 @@ type createDrugRequest struct {
 	Manufacturer       string `json:"manufacturer"`
 }
 
-// idResponse documenta o corpo {"id": 123} retornado nos endpoints de criação.
+// idResponse documents the {"id": 123} body returned by create endpoints.
 type idResponse struct {
 	ID int64 `json:"id" example:"1"`
 }
@@ -51,11 +51,11 @@ func drugRequestVerification(req createDrugRequest) (error error) {
 }
 
 // GetSummaryByEAN godoc
-// @Summary      Busca a bula simplificada pelo EAN
-// @Description  Retorna os dados do remédio e o resumo da bula a partir do código de barras da caixa
+// @Summary      Get the simplified leaflet by EAN
+// @Description  Returns the drug data and the leaflet summary from the barcode on the box
 // @Tags         drugs
 // @Produce      json
-// @Param        ean  path      string  true  "Código EAN da embalagem"
+// @Param        ean  path      string  true  "Package EAN barcode"
 // @Success      200  {object}  db.GetSummaryByEANRow
 // @Failure      400  {string}  string  "ean is required"
 // @Failure      404  {string}  string  "ean not found"
@@ -87,13 +87,13 @@ func (h *DrugHandler) GetSummaryByEAN(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateDrug godoc
-// @Summary      Cadastra um remédio
+// @Summary      Create a drug
 // @Tags         drugs
 // @Accept       json
 // @Produce      json
-// @Param        body  body      createDrugRequest  true  "Dados do remédio"
+// @Param        body  body      createDrugRequest  true  "Drug data"
 // @Success      201   {object}  idResponse
-// @Failure      400   {string}  string  "json inválido ou campo obrigatório faltando"
+// @Failure      400   {string}  string  "invalid json or missing required field"
 // @Failure      409   {string}  string  "registration_number already exists"
 // @Failure      500  {string}  string  "internal server error"
 // @Router       /drugs [post]
@@ -129,13 +129,13 @@ func (h *DrugHandler) CreateDrug(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateDrug godoc
-// @Summary      Atualiza um remédio
+// @Summary      Update a drug
 // @Tags         drugs
 // @Accept       json
-// @Param        id   path      int     true  "ID do remédio"
-// @Param        body  body      createDrugRequest  true  "Dados do remédio"
+// @Param        id   path      int     true  "Drug ID"
+// @Param        body  body      createDrugRequest  true  "Drug data"
 // @Success      204
-// @Failure      400  {string}  string  "id ou json inválido"
+// @Failure      400  {string}  string  "invalid id or json"
 // @Failure      404  {string}  string  "drug not found"
 // @Failure      409  {string}  string  "registration_number already exists"
 // @Failure      500  {string}  string  "internal server error"
@@ -181,9 +181,9 @@ func (h *DrugHandler) UpdateDrug(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteDrug godoc
-// @Summary      Remove um remédio
+// @Summary      Delete a drug
 // @Tags         drugs
-// @Param        id   path      int     true  "ID do remédio"
+// @Param        id   path      int     true  "Drug ID"
 // @Success      204
 // @Failure      400  {string}  string  "invalid id"
 // @Failure      404  {string}  string  "drug not found"
@@ -215,11 +215,11 @@ func (h *DrugHandler) DeleteDrug(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListDrugs godoc
-// @Summary      Lista remédios (paginado)
+// @Summary      List drugs (paginated)
 // @Tags         drugs
 // @Produce      json
-// @Param        limit   query     int     false  "Itens por página (padrão 20, máx 100)"
-// @Param        offset  query     int     false  "Quantos itens pular (padrão 0)"
+// @Param        limit   query     int     false  "Items per page (default 20, max 100)"
+// @Param        offset  query     int     false  "How many items to skip (default 0)"
 // @Success      200  {object}  listResponse{data=[]db.ListDrugsRow}
 // @Failure      400  {string}  string  "invalid limit / invalid offset"
 // @Failure      500  {string}  string  "internal server error"

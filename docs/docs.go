@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/auth/login": {
             "post": {
-                "description": "Confere email e senha e grava o cookie de sessão (HttpOnly). No Swagger, depois do login as outras rotas passam a funcionar neste mesmo navegador.",
+                "description": "Checks email and password and sets the session cookie (HttpOnly). In Swagger, after logging in the other routes work in this same browser.",
                 "consumes": [
                     "application/json"
                 ],
@@ -27,10 +27,10 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Entra no painel",
+                "summary": "Log in to the admin panel",
                 "parameters": [
                     {
-                        "description": "Credenciais",
+                        "description": "Credentials",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -72,7 +72,7 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Sai do painel",
+                "summary": "Log out of the admin panel",
                 "responses": {
                     "204": {
                         "description": "No Content"
@@ -88,7 +88,7 @@ const docTemplate = `{
                 "tags": [
                     "auth"
                 ],
-                "summary": "Usuário logado",
+                "summary": "Current user",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -107,17 +107,17 @@ const docTemplate = `{
         },
         "/auth/password": {
             "put": {
-                "description": "Exige a senha atual. As outras sessões do usuário são encerradas; a atual continua.",
+                "description": "Requires the current password. The user's other sessions are ended; the current one stays.",
                 "consumes": [
                     "application/json"
                 ],
                 "tags": [
                     "auth"
                 ],
-                "summary": "Troca a própria senha",
+                "summary": "Change your own password",
                 "parameters": [
                     {
-                        "description": "Senha atual e nova (8 a 72 caracteres)",
+                        "description": "Current and new password (8 to 72 characters)",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -131,7 +131,7 @@ const docTemplate = `{
                         "description": "No Content"
                     },
                     "400": {
-                        "description": "senha nova fraca / json inválido",
+                        "description": "weak new password / invalid json",
                         "schema": {
                             "type": "string"
                         }
@@ -159,17 +159,17 @@ const docTemplate = `{
                 "tags": [
                     "drugs"
                 ],
-                "summary": "Lista remédios (paginado)",
+                "summary": "List drugs (paginated)",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Itens por página (padrão 20, máx 100)",
+                        "description": "Items per page (default 20, max 100)",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Quantos itens pular (padrão 0)",
+                        "description": "How many items to skip (default 0)",
                         "name": "offset",
                         "in": "query"
                     }
@@ -220,10 +220,10 @@ const docTemplate = `{
                 "tags": [
                     "drugs"
                 ],
-                "summary": "Cadastra um remédio",
+                "summary": "Create a drug",
                 "parameters": [
                     {
-                        "description": "Dados do remédio",
+                        "description": "Drug data",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -240,7 +240,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "json inválido ou campo obrigatório faltando",
+                        "description": "invalid json or missing required field",
                         "schema": {
                             "type": "string"
                         }
@@ -262,18 +262,18 @@ const docTemplate = `{
         },
         "/drugs/ean/{ean}": {
             "get": {
-                "description": "Retorna os dados do remédio e o resumo da bula a partir do código de barras da caixa",
+                "description": "Returns the drug data and the leaflet summary from the barcode on the box",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "drugs"
                 ],
-                "summary": "Busca a bula simplificada pelo EAN",
+                "summary": "Get the simplified leaflet by EAN",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Código EAN da embalagem",
+                        "description": "Package EAN barcode",
                         "name": "ean",
                         "in": "path",
                         "required": true
@@ -315,17 +315,17 @@ const docTemplate = `{
                 "tags": [
                     "drugs"
                 ],
-                "summary": "Atualiza um remédio",
+                "summary": "Update a drug",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID do remédio",
+                        "description": "Drug ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Dados do remédio",
+                        "description": "Drug data",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -339,7 +339,7 @@ const docTemplate = `{
                         "description": "No Content"
                     },
                     "400": {
-                        "description": "id ou json inválido",
+                        "description": "invalid id or json",
                         "schema": {
                             "type": "string"
                         }
@@ -368,11 +368,11 @@ const docTemplate = `{
                 "tags": [
                     "drugs"
                 ],
-                "summary": "Remove um remédio",
+                "summary": "Delete a drug",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID do remédio",
+                        "description": "Drug ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -411,17 +411,17 @@ const docTemplate = `{
                 "tags": [
                     "packages"
                 ],
-                "summary": "Lista embalagens (paginado)",
+                "summary": "List packages (paginated)",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Itens por página (padrão 20, máx 100)",
+                        "description": "Items per page (default 20, max 100)",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Quantos itens pular (padrão 0)",
+                        "description": "How many items to skip (default 0)",
                         "name": "offset",
                         "in": "query"
                     }
@@ -463,7 +463,7 @@ const docTemplate = `{
                 }
             },
             "post": {
-                "description": "Uma embalagem pode ter vários EANs (ex.: código antigo e novo convivendo na prateleira).",
+                "description": "A package can have several EANs (e.g. an old and a new code on the shelf at the same time).",
                 "consumes": [
                     "application/json"
                 ],
@@ -473,10 +473,10 @@ const docTemplate = `{
                 "tags": [
                     "packages"
                 ],
-                "summary": "Cadastra uma embalagem (apresentação) de um remédio",
+                "summary": "Create a package (presentation) of a drug",
                 "parameters": [
                     {
-                        "description": "Dados da embalagem",
+                        "description": "Package data",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -493,7 +493,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "json inválido ou campo obrigatório faltando",
+                        "description": "invalid json or missing required field",
                         "schema": {
                             "type": "string"
                         }
@@ -505,7 +505,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "ean ou presentation_registration já cadastrado",
+                        "description": "ean or presentation_registration already registered",
                         "schema": {
                             "type": "string"
                         }
@@ -527,11 +527,11 @@ const docTemplate = `{
                 "tags": [
                     "packages"
                 ],
-                "summary": "Busca uma embalagem pelo ID",
+                "summary": "Get a package by ID",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID da embalagem",
+                        "description": "Package ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -571,17 +571,17 @@ const docTemplate = `{
                 "tags": [
                     "packages"
                 ],
-                "summary": "Atualiza uma embalagem",
+                "summary": "Update a package",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID da embalagem",
+                        "description": "Package ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Dados da embalagem",
+                        "description": "Package data",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -595,7 +595,7 @@ const docTemplate = `{
                         "description": "No Content"
                     },
                     "400": {
-                        "description": "id ou json inválido",
+                        "description": "invalid id or json",
                         "schema": {
                             "type": "string"
                         }
@@ -607,7 +607,7 @@ const docTemplate = `{
                         }
                     },
                     "409": {
-                        "description": "ean ou presentation_registration já cadastrado",
+                        "description": "ean or presentation_registration already registered",
                         "schema": {
                             "type": "string"
                         }
@@ -624,11 +624,11 @@ const docTemplate = `{
                 "tags": [
                     "packages"
                 ],
-                "summary": "Remove uma embalagem",
+                "summary": "Delete a package",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID da embalagem",
+                        "description": "Package ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -667,17 +667,17 @@ const docTemplate = `{
                 "tags": [
                     "summaries"
                 ],
-                "summary": "Lista bulas simplificadas (paginado)",
+                "summary": "List simplified leaflets (paginated)",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "Itens por página (padrão 20, máx 100)",
+                        "description": "Items per page (default 20, max 100)",
                         "name": "limit",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "Quantos itens pular (padrão 0)",
+                        "description": "How many items to skip (default 0)",
                         "name": "offset",
                         "in": "query"
                     }
@@ -728,10 +728,10 @@ const docTemplate = `{
                 "tags": [
                     "summaries"
                 ],
-                "summary": "Cadastra a bula simplificada de um remédio",
+                "summary": "Create the simplified leaflet of a drug",
                 "parameters": [
                     {
-                        "description": "Resumo da bula",
+                        "description": "Leaflet summary",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -748,7 +748,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "json inválido ou campo obrigatório faltando",
+                        "description": "invalid json or missing required field",
                         "schema": {
                             "type": "string"
                         }
@@ -782,11 +782,11 @@ const docTemplate = `{
                 "tags": [
                     "summaries"
                 ],
-                "summary": "Busca a bula simplificada de um remédio",
+                "summary": "Get the simplified leaflet of a drug",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID do remédio",
+                        "description": "Drug ID",
                         "name": "drugID",
                         "in": "path",
                         "required": true
@@ -828,11 +828,11 @@ const docTemplate = `{
                 "tags": [
                     "summaries"
                 ],
-                "summary": "Busca uma bula simplificada pelo ID",
+                "summary": "Get a simplified leaflet by ID",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID do resumo",
+                        "description": "Summary ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -872,17 +872,17 @@ const docTemplate = `{
                 "tags": [
                     "summaries"
                 ],
-                "summary": "Atualiza uma bula simplificada",
+                "summary": "Update a simplified leaflet",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID do resumo",
+                        "description": "Summary ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Resumo da bula",
+                        "description": "Leaflet summary",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -896,7 +896,7 @@ const docTemplate = `{
                         "description": "No Content"
                     },
                     "400": {
-                        "description": "id ou json inválido / campo obrigatório faltando",
+                        "description": "invalid id or json / missing required field",
                         "schema": {
                             "type": "string"
                         }
@@ -919,11 +919,11 @@ const docTemplate = `{
                 "tags": [
                     "summaries"
                 ],
-                "summary": "Remove uma bula simplificada",
+                "summary": "Delete a simplified leaflet",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID do resumo",
+                        "description": "Summary ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -956,15 +956,15 @@ const docTemplate = `{
         },
         "/summaries/{id}/review": {
             "patch": {
-                "description": "Quem revisou é o usuário logado (papel reviewer ou admin). Não recebe corpo.",
+                "description": "The reviewer is the logged-in user (reviewer or admin role). No request body.",
                 "tags": [
                     "summaries"
                 ],
-                "summary": "Marca uma bula simplificada como revisada",
+                "summary": "Mark a simplified leaflet as reviewed",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID do resumo",
+                        "description": "Summary ID",
                         "name": "id",
                         "in": "path",
                         "required": true
@@ -1015,7 +1015,7 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Lista usuários do painel (admin)",
+                "summary": "List admin panel users (admin)",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -1050,10 +1050,10 @@ const docTemplate = `{
                 "tags": [
                     "users"
                 ],
-                "summary": "Cria um usuário do painel (admin)",
+                "summary": "Create an admin panel user (admin)",
                 "parameters": [
                     {
-                        "description": "Dados do usuário (senha de 8 a 72 caracteres)",
+                        "description": "User data (password of 8 to 72 characters)",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -1070,7 +1070,7 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "dados inválidos",
+                        "description": "invalid data",
                         "schema": {
                             "type": "string"
                         }
@@ -1086,24 +1086,24 @@ const docTemplate = `{
         },
         "/users/{id}": {
             "put": {
-                "description": "Desativar ou trocar o papel encerra as sessões do usuário. O último admin ativo não pode ser rebaixado nem desativado.",
+                "description": "Deactivating a user or changing their role ends their sessions. The last active admin can't be demoted or deactivated.",
                 "consumes": [
                     "application/json"
                 ],
                 "tags": [
                     "users"
                 ],
-                "summary": "Atualiza nome, email, papel e status (admin)",
+                "summary": "Update name, email, role and status (admin)",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID do usuário",
+                        "description": "User ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Dados do usuário",
+                        "description": "User data",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -1117,7 +1117,7 @@ const docTemplate = `{
                         "description": "No Content"
                     },
                     "400": {
-                        "description": "dados inválidos",
+                        "description": "invalid data",
                         "schema": {
                             "type": "string"
                         }
@@ -1139,24 +1139,24 @@ const docTemplate = `{
         },
         "/users/{id}/password": {
             "put": {
-                "description": "Encerra todas as sessões do usuário.",
+                "description": "Ends all of the user's sessions.",
                 "consumes": [
                     "application/json"
                 ],
                 "tags": [
                     "users"
                 ],
-                "summary": "Define uma senha nova para o usuário (admin)",
+                "summary": "Set a new password for a user (admin)",
                 "parameters": [
                     {
                         "type": "integer",
-                        "description": "ID do usuário",
+                        "description": "User ID",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Senha nova (8 a 72 caracteres)",
+                        "description": "New password (8 to 72 characters)",
                         "name": "body",
                         "in": "body",
                         "required": true,
@@ -1170,7 +1170,7 @@ const docTemplate = `{
                         "description": "No Content"
                     },
                     "400": {
-                        "description": "senha fraca",
+                        "description": "weak password",
                         "schema": {
                             "type": "string"
                         }
@@ -1525,14 +1525,14 @@ const docTemplate = `{
                 "admin"
             ],
             "x-enum-comments": {
-                "RoleAdmin": "+ gerencia usuários",
-                "RoleEditor": "cadastra e edita remédios, embalagens e bulas",
-                "RoleReviewer": "+ marca bula como revisada (farmacêutico)"
+                "RoleAdmin": "+ manages users",
+                "RoleEditor": "creates and edits drugs, packages and leaflets",
+                "RoleReviewer": "+ marks leaflets as reviewed (pharmacist)"
             },
             "x-enum-descriptions": [
-                "cadastra e edita remédios, embalagens e bulas",
-                "+ marca bula como revisada (farmacêutico)",
-                "+ gerencia usuários"
+                "creates and edits drugs, packages and leaflets",
+                "+ marks leaflets as reviewed (pharmacist)",
+                "+ manages users"
             ],
             "x-enum-varnames": [
                 "RoleEditor",
@@ -1636,7 +1636,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "leaflet_expedient": {
-                    "description": "Versão da bula oficial que foi resumida",
+                    "description": "Version of the official leaflet that was summarized",
                     "type": "string",
                     "example": "0123456/24-5"
                 },
@@ -1787,7 +1787,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "leaflet_expedient": {
-                    "description": "Versão da bula oficial que foi resumida",
+                    "description": "Version of the official leaflet that was summarized",
                     "type": "string",
                     "example": "0123456/24-5"
                 },
@@ -1865,7 +1865,7 @@ var SwaggerInfo = &swag.Spec{
 	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "PharmaCode API",
-	Description:      "API que lê o código da caixa do remédio e retorna a bula simplificada.\nRota pública: GET /drugs/ean/{ean}. As demais exigem login (POST /auth/login grava um cookie de sessão).",
+	Description:      "API that reads the barcode on a medicine box and returns the simplified leaflet.\nPublic route: GET /drugs/ean/{ean}. All others require login (POST /auth/login sets a session cookie).",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",

@@ -35,8 +35,8 @@ type updatePackageRequest struct {
 	PresentationRegistration string   `json:"presentation_registration,omitempty" example:"1234567890014"`
 }
 
-// normalizeEANs tira espaços, descarta vazios e repetidos, e valida o formato.
-// Aceita de 8 (EAN-8) a 13 (EAN-13) dígitos.
+// normalizeEANs trims spaces, drops empty and duplicate values, and validates the format.
+// Accepts 8 (EAN-8) to 13 (EAN-13) digits.
 func normalizeEANs(raw []string) ([]string, error) {
 	seen := make(map[string]bool, len(raw))
 	eans := make([]string, 0, len(raw))
@@ -57,7 +57,7 @@ func normalizeEANs(raw []string) ([]string, error) {
 	return eans, nil
 }
 
-// validatePresentationRegistration: opcional, mas se vier precisa ter 13 dígitos.
+// validatePresentationRegistration: optional, but when present it must have 13 digits.
 func validatePresentationRegistration(s string) error {
 	if s != "" && (len(s) != 13 || !isDigits(s)) {
 		return errors.New("presentation_registration must have exactly 13 digits")
@@ -74,7 +74,7 @@ func isDigits(s string) bool {
 	return s != ""
 }
 
-// packageErrorStatus traduz os erros de escrita do service para status HTTP.
+// packageErrorStatus maps the service's write errors to HTTP status codes.
 func packageErrorStatus(err error) (int, string, bool) {
 	switch {
 	case errors.Is(err, service.ErrPackageNotFound):
@@ -90,16 +90,16 @@ func packageErrorStatus(err error) (int, string, bool) {
 }
 
 // CreatePackage godoc
-// @Summary      Cadastra uma embalagem (apresentação) de um remédio
-// @Description  Uma embalagem pode ter vários EANs (ex.: código antigo e novo convivendo na prateleira).
+// @Summary      Create a package (presentation) of a drug
+// @Description  A package can have several EANs (e.g. an old and a new code on the shelf at the same time).
 // @Tags         packages
 // @Accept       json
 // @Produce      json
-// @Param        body  body      createPackageRequest  true  "Dados da embalagem"
+// @Param        body  body      createPackageRequest  true  "Package data"
 // @Success      201   {object}  idResponse
-// @Failure      400   {string}  string  "json inválido ou campo obrigatório faltando"
+// @Failure      400   {string}  string  "invalid json or missing required field"
 // @Failure      404   {string}  string  "drug not found"
-// @Failure      409   {string}  string  "ean ou presentation_registration já cadastrado"
+// @Failure      409   {string}  string  "ean or presentation_registration already registered"
 // @Failure      500  {string}  string  "internal server error"
 // @Router       /packages [post]
 func (h *PackageHandler) CreatePackage(w http.ResponseWriter, r *http.Request) {
@@ -148,11 +148,11 @@ func (h *PackageHandler) CreatePackage(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListPackages godoc
-// @Summary      Lista embalagens (paginado)
+// @Summary      List packages (paginated)
 // @Tags         packages
 // @Produce      json
-// @Param        limit   query     int     false  "Itens por página (padrão 20, máx 100)"
-// @Param        offset  query     int     false  "Quantos itens pular (padrão 0)"
+// @Param        limit   query     int     false  "Items per page (default 20, max 100)"
+// @Param        offset  query     int     false  "How many items to skip (default 0)"
 // @Success      200  {object}  listResponse{data=[]db.ListPackagesRow}
 // @Failure      400  {string}  string  "invalid limit / invalid offset"
 // @Failure      500  {string}  string  "internal server error"
@@ -202,10 +202,10 @@ func (h *PackageHandler) ListPackages(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetPackageByID godoc
-// @Summary      Busca uma embalagem pelo ID
+// @Summary      Get a package by ID
 // @Tags         packages
 // @Produce      json
-// @Param        id   path      int     true  "ID da embalagem"
+// @Param        id   path      int     true  "Package ID"
 // @Success      200  {object}  db.GetPackageByIdRow
 // @Failure      400  {string}  string  "invalid id"
 // @Failure      404  {string}  string  "package not found"
@@ -236,15 +236,15 @@ func (h *PackageHandler) GetPackageByID(w http.ResponseWriter, r *http.Request) 
 }
 
 // UpdatePackage godoc
-// @Summary      Atualiza uma embalagem
+// @Summary      Update a package
 // @Tags         packages
 // @Accept       json
-// @Param        id   path      int     true  "ID da embalagem"
-// @Param        body  body      updatePackageRequest  true  "Dados da embalagem"
+// @Param        id   path      int     true  "Package ID"
+// @Param        body  body      updatePackageRequest  true  "Package data"
 // @Success      204
-// @Failure      400  {string}  string  "id ou json inválido"
+// @Failure      400  {string}  string  "invalid id or json"
 // @Failure      404  {string}  string  "package not found / drug not found"
-// @Failure      409  {string}  string  "ean ou presentation_registration já cadastrado"
+// @Failure      409  {string}  string  "ean or presentation_registration already registered"
 // @Failure      500  {string}  string  "internal server error"
 // @Router       /packages/{id} [put]
 func (h *PackageHandler) UpdatePackage(w http.ResponseWriter, r *http.Request) {
@@ -295,9 +295,9 @@ func (h *PackageHandler) UpdatePackage(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeletePackage godoc
-// @Summary      Remove uma embalagem
+// @Summary      Delete a package
 // @Tags         packages
-// @Param        id   path      int     true  "ID da embalagem"
+// @Param        id   path      int     true  "Package ID"
 // @Success      204
 // @Failure      400  {string}  string  "invalid id"
 // @Failure      404  {string}  string  "package not found"

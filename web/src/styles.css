@@ -173,7 +173,7 @@ td.empty { text-align: center; color: var(--muted); padding: 32px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px; }
 
-/* ---------- busca de remédio ---------- */
+/* ---------- drug search ---------- */
 .picker { position: relative; }
 .picker-selected {
   width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px;
@@ -190,7 +190,7 @@ td.empty { text-align: center; color: var(--muted); padding: 32px; }
 .picker-list li.active { background: color-mix(in srgb, var(--primary) 16%, transparent); }
 .picker-list li.picker-empty { cursor: default; color: var(--muted); }
 
-/* ---------- EANs & grupos ---------- */
+/* ---------- EANs & groups ---------- */
 .chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; font-size: 12px; }
 .ean-list { display: flex; flex-direction: column; gap: 6px; }
@@ -226,7 +226,7 @@ fieldset.group > .hint { margin: 0 0 10px; font-size: 12px; }
   .grid2 { grid-template-columns: 1fr; }
 }
 
-/* ---------- login e usuário ---------- */
+/* ---------- login and user ---------- */
 .loading.full { min-height: 100vh; display: grid; place-items: center; }
 .login-wrap { min-height: 100vh; display: grid; place-items: center; padding: 16px; }
 .login-card {

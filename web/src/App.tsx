@@ -34,7 +34,7 @@ function Shell() {
   const { user, checking, can } = useAuth()
   const [tab, setTab] = useState(hashTab)
 
-  // Voltar/avançar do navegador troca de aba
+  // Browser back/forward switches tabs
   useEffect(() => {
     const onHash = () => setTab(hashTab())
     window.addEventListener('hashchange', onHash)
@@ -67,7 +67,7 @@ function Shell() {
         </nav>
         <UserMenu />
       </header>
-      {/* key: troca de usuário remonta a página e recarrega os dados */}
+      {/* key: switching users remounts the page and reloads the data */}
       <main className="container" key={user.id}>{current.el}</main>
     </>
   )

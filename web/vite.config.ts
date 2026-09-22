@@ -1,8 +1,8 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// Em desenvolvimento (npm run dev), /api é repassado para a API Go local.
-// No Docker, quem faz esse papel é o nginx (ver nginx.conf).
+// In development (npm run dev), /api is forwarded to the local Go API.
+// In Docker, nginx does this instead (see nginx.conf).
 export default defineConfig({
   plugins: [react()],
   server: {

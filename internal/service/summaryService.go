@@ -34,7 +34,7 @@ type CreateSummaryInput struct {
 	MechanismOfAction string
 	Storage           string
 	SourceURL         string
-	// Versão da bula resumida: número do expediente e data de publicação (YYYY-MM-DD)
+	// Version of the summarized leaflet: filing (expediente) number and publication date (YYYY-MM-DD)
 	LeafletExpedient   string
 	LeafletPublishedAt string
 }
@@ -52,7 +52,7 @@ type UpdateSummaryInput struct {
 	MechanismOfAction string
 	Storage           string
 	SourceURL         string
-	// Versão da bula resumida: número do expediente e data de publicação (YYYY-MM-DD)
+	// Version of the summarized leaflet: filing (expediente) number and publication date (YYYY-MM-DD)
 	LeafletExpedient   string
 	LeafletPublishedAt string
 }
@@ -61,7 +61,7 @@ func optionalText(s string) pgtype.Text {
 	return pgtype.Text{String: s, Valid: s != ""}
 }
 
-// optionalDate converte "YYYY-MM-DD" em pgtype.Date; string vazia vira NULL.
+// optionalDate converts "YYYY-MM-DD" to pgtype.Date; an empty string becomes NULL.
 func optionalDate(s string) (pgtype.Date, error) {
 	if s == "" {
 		return pgtype.Date{}, nil
@@ -141,8 +141,8 @@ func (s *SummaryService) Update(ctx context.Context, id int64, in UpdateSummaryI
 	return nil
 }
 
-// Review marca a bula como revisada pelo usuário logado (reviewer ou admin).
-// Guarda o id dele e o nome no momento da revisão.
+// Review marks the leaflet as reviewed by the logged-in user (reviewer or admin).
+// Stores their id and their name at review time.
 func (s *SummaryService) Review(ctx context.Context, id, reviewerID int64, reviewerName string) error {
 	rows, err := s.queries.ReviewSummary(ctx, db.ReviewSummaryParams{
 		ID:               id,

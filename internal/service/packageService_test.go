@@ -123,7 +123,7 @@ func TestPackageService_Update(t *testing.T) {
 		assert.Equal(t, "novo", fake.LastUpdateParams.Description)
 	})
 
-	// Mesmo ganho que no drugs: veio da troca de :exec para :execrows.
+	// Same gain as in drugs: comes from switching :exec to :execrows.
 	t.Run("id inexistente vira ErrPackageNotFound", func(t *testing.T) {
 		fake := testutil.NewFakePackageQuerier()
 		svc := service.NewPackageService(fake)

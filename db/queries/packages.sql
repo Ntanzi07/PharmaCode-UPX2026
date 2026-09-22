@@ -1,7 +1,7 @@
 -- name: CreatePackage :one
--- Cria o package e os EANs dele num único comando (atômico): se um EAN já
--- existir, nada é gravado. Sem remédio com esse registration_number, não
--- retorna linha (pgx.ErrNoRows).
+-- Creates the package and its EANs in a single (atomic) statement: if an EAN
+-- already exists, nothing is written. If no drug has this registration_number,
+-- no row is returned (pgx.ErrNoRows).
 WITH new_package AS (
     INSERT INTO packages (drug_id, description, presentation_registration)
         SELECT d.id, @description::text, sqlc.narg(presentation_registration)::varchar
@@ -17,8 +17,8 @@ SELECT id
 FROM new_package;
 
 -- name: UpdatePackage :execrows
--- Atualiza o package e sincroniza a lista de EANs: remove os que saíram da
--- lista e insere os novos, tudo num único comando.
+-- Updates the package and syncs its EAN list: removes the ones no longer in
+-- the list and inserts the new ones, all in a single statement.
 WITH updated AS (
     UPDATE packages AS p
         SET drug_id = @drug_id,

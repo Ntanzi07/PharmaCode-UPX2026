@@ -6,7 +6,7 @@ import (
 	"net/http"
 )
 
-// writeJSON escreve v como JSON com o status informado.
+// writeJSON writes v as JSON with the given status.
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

@@ -119,8 +119,8 @@ func (f *FakePackageQuerier) UpdatePackage(ctx context.Context, arg db.UpdatePac
 	return 1, nil
 }
 
-// checkUnique imita as constraints UNIQUE do banco: um EAN só pode estar em um
-// package, e o registro da apresentação também é único. Ignora o package "self".
+// checkUnique mimics the database UNIQUE constraints: an EAN can belong to only one
+// package, and the presentation registration is unique too. Ignores the "self" package.
 func (f *FakePackageQuerier) checkUnique(self int64, eans []string, presentation pgtype.Text) error {
 	for id, p := range f.pkgs {
 		if id == self {

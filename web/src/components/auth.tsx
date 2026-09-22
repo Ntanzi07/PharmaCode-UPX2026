@@ -6,13 +6,13 @@ const LEVEL: Record<Role, number> = { editor: 1, reviewer: 2, admin: 3 }
 
 type AuthState = {
   user: User | null
-  /** true enquanto confere se já existe sessão (primeira carga) */
+  /** true while checking for an existing session (first load) */
   checking: boolean
-  /** true quando a sessão caiu no meio do uso (mostra aviso no login) */
+  /** true when the session dropped while in use (shows a notice on the login screen) */
   expired: boolean
   login: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
-  /** o usuário tem pelo menos esse papel? (mesma regra da API) */
+  /** does the user have at least this role? (same rule as the API) */
   can: (min: Role) => boolean
 }
 
@@ -23,7 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [checking, setChecking] = useState(true)
   const [expired, setExpired] = useState(false)
 
-  // Ao abrir o painel: se o cookie de sessão ainda vale, já entra logado
+  // When the panel opens: if the session cookie is still valid, log in right away
   useEffect(() => {
     api.auth
       .me()
@@ -34,9 +34,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .finally(() => setChecking(false))
   }, [])
 
-  // Qualquer 401 no meio do uso derruba para a tela de login
+  // Any 401 while in use sends the user back to the login screen
   useEffect(() => {
-    // (só chamadas de fora de /auth disparam o evento, e elas só acontecem logado)
+    // (only calls outside /auth fire the event, and those only happen while logged in)
     const onExpired = () => {
       setExpired(true)
       setUser(null)

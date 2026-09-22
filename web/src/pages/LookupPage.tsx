@@ -3,7 +3,7 @@ import { api, ApiError, errorMessage } from '../api'
 import { SUMMARY_TEXT_FIELDS, type EanSummary } from '../types'
 import { fmtDay } from '../components/format'
 
-/** Mostra o que o app do usuário final vai receber ao ler o código de barras. */
+/** Shows what the end-user app will receive when it scans the barcode. */
 export default function LookupPage() {
   const [ean, setEan] = useState('')
   const [result, setResult] = useState<EanSummary | null>(null)

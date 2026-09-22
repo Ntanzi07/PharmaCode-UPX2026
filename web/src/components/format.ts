@@ -4,7 +4,7 @@ export function fmtDate(s: string | null | undefined): string {
   return isNaN(d.getTime()) ? '—' : d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 }
 
-/** "2024-05-31" -> "31/05/2024" (sem passar por Date, para não sofrer com fuso) */
+/** "2024-05-31" -> "31/05/2024" (without going through Date, to avoid timezone issues) */
 export function fmtDay(s: string | null | undefined): string {
   if (!s) return '—'
   const [y, m, d] = s.split('-')

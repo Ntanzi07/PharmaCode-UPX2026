@@ -48,7 +48,7 @@ func TestCreateSummary(t *testing.T) {
 		assert.Equal(t, int64(1), body["id"])
 	})
 
-	// Table-driven de novo: todos os casos de 400 numa tabela so.
+	// Table-driven again: every 400 case in a single table.
 	t.Run("payloads inválidos devolvem 400", func(t *testing.T) {
 		tests := []struct {
 			name string
@@ -71,7 +71,7 @@ func TestCreateSummary(t *testing.T) {
 				h.CreateSummary(rec, req)
 
 				assert.Equal(t, http.StatusBadRequest, rec.Code)
-				// Validacao invalida nao pode nem encostar no banco.
+				// Invalid input must not even reach the database.
 				assert.Zero(t, fake.CreateCalls)
 			})
 		}
@@ -108,8 +108,8 @@ func TestGetSummaryByID(t *testing.T) {
 		seeded := fake.Seed(db.GetSummaryByIDRow{DrugID: 7, WhatIsItFor: "Dor"})
 
 		req := httptest.NewRequest(http.MethodGet, "/summaries/1", nil)
-		// SetPathValue simula o que o ServeMux faria ao casar "/summaries/{id}".
-		// Assim o teste isola o handler, sem depender do router.
+		// SetPathValue simulates what ServeMux does when matching "/summaries/{id}".
+		// This way the test isolates the handler without depending on the router.
 		req.SetPathValue("id", "1")
 		rec := httptest.NewRecorder()
 
@@ -209,7 +209,7 @@ func TestUpdateSummary(t *testing.T) {
 	})
 }
 
-// asReviewer simula o que o middleware faz: coloca o usuário logado no contexto.
+// asReviewer simulates what the middleware does: puts the logged-in user in the context.
 func asReviewer(req *http.Request) *http.Request {
 	return req.WithContext(auth.WithUser(req.Context(),
 		auth.User{ID: 7, Name: "Farmaceutica Responsavel", Role: auth.RoleReviewer}))
@@ -220,7 +220,7 @@ func TestReviewSummary(t *testing.T) {
 		h, fake := newTestHandler(t)
 		fake.Seed(db.GetSummaryByIDRow{ID: 1, DrugID: 1})
 
-		// o corpo é ignorado: quem revisou vem da sessão, não do JSON
+		// the body is ignored: the reviewer comes from the session, not from the JSON
 		req := asReviewer(httptest.NewRequest(http.MethodPatch, "/summaries/1/review",
 			strings.NewReader(`{"reviewed_by":"Outra Pessoa"}`)))
 		req.SetPathValue("id", "1")

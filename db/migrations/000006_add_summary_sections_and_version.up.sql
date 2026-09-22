@@ -1,8 +1,8 @@
 ALTER TABLE summaries
-    -- Seções da bula que ainda não tinham onde entrar
-    ADD COLUMN missed_dose          TEXT, -- "O que fazer se esquecer de usar"
-    ADD COLUMN warnings             TEXT, -- "Advertências e precauções"
-    -- Versão da bula que foi resumida, para saber quando o resumo ficou
-    -- desatualizado em relação à bula publicada pela Anvisa
-    ADD COLUMN leaflet_expedient    VARCHAR(30), -- número do expediente
-    ADD COLUMN leaflet_published_at DATE;        -- data de publicação da bula
+    -- Leaflet sections that had no column yet
+    ADD COLUMN missed_dose          TEXT, -- "What to do if you miss a dose"
+    ADD COLUMN warnings             TEXT, -- "Warnings and precautions"
+    -- Version of the leaflet that was summarized, to know when the summary is
+    -- out of date compared to the leaflet published by Anvisa
+    ADD COLUMN leaflet_expedient    VARCHAR(30), -- Anvisa filing (expediente) number
+    ADD COLUMN leaflet_published_at DATE;        -- leaflet publication date

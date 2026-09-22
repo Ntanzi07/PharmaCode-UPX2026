@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// CookieName é o cookie da sessão do painel.
+// CookieName is the admin panel session cookie.
 const CookieName = "pharmacode_session"
 
 type Middleware struct {
@@ -18,8 +18,8 @@ func NewMiddleware(svc *Service) *Middleware {
 	return &Middleware{svc: svc}
 }
 
-// Require só deixa passar requisições com sessão válida de um usuário com
-// papel igual ou acima de min. Sem sessão: 401. Papel insuficiente: 403.
+// Require only lets through requests with a valid session from a user whose
+// role is min or higher. No session: 401. Insufficient role: 403.
 func (m *Middleware) Require(min Role, next http.HandlerFunc) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		cookie, err := r.Cookie(CookieName)
@@ -45,9 +45,9 @@ func (m *Middleware) Require(min Role, next http.HandlerFunc) http.Handler {
 	})
 }
 
-// SessionCookie monta o cookie da sessão. HttpOnly: o JavaScript não lê.
-// SameSite=Strict: o navegador não manda o cookie em requisições vindas de
-// outros sites (protege contra CSRF). Secure: só em HTTPS (ligar em produção).
+// SessionCookie builds the session cookie. HttpOnly: JavaScript can't read it.
+// SameSite=Strict: the browser doesn't send the cookie on requests coming from
+// other sites (CSRF protection). Secure: HTTPS only (turn on in production).
 func SessionCookie(token string, expires time.Time, secure bool) *http.Cookie {
 	return &http.Cookie{
 		Name:     CookieName,
@@ -60,7 +60,7 @@ func SessionCookie(token string, expires time.Time, secure bool) *http.Cookie {
 	}
 }
 
-// ClearSessionCookie apaga o cookie no navegador.
+// ClearSessionCookie deletes the cookie in the browser.
 func ClearSessionCookie(secure bool) *http.Cookie {
 	return &http.Cookie{
 		Name:     CookieName,

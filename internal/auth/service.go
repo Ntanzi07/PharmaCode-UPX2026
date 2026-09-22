@@ -21,7 +21,7 @@ var (
 	ErrUnauthenticated    = errors.New("authentication required")
 )
 
-// Querier é o pedaço do sqlc que o login usa (facilita o fake nos testes).
+// Querier is the part of sqlc that login uses (makes faking it in tests easy).
 type Querier interface {
 	GetUserByEmail(ctx context.Context, email string) (db.GetUserByEmailRow, error)
 	CreateSession(ctx context.Context, arg db.CreateSessionParams) error
@@ -40,12 +40,12 @@ func NewService(q Querier, sessionTTL time.Duration) *Service {
 	return &Service{q: q, ttl: sessionTTL, now: time.Now}
 }
 
-// NormalizeEmail deixa o email no formato em que ele é guardado no banco.
+// NormalizeEmail puts the email in the format it is stored in the database.
 func NormalizeEmail(email string) string {
 	return strings.ToLower(strings.TrimSpace(email))
 }
 
-// HashToken é o que vai para o banco: o SHA-256 do token do cookie.
+// HashToken is what goes into the database: the SHA-256 of the cookie token.
 func HashToken(token string) []byte {
 	sum := sha256.Sum256([]byte(token))
 	return sum[:]
@@ -59,11 +59,11 @@ func newToken() (string, error) {
 	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
-// Login confere email e senha e cria uma sessão. Devolve o token que vai no cookie.
+// Login checks email and password and creates a session. Returns the token for the cookie.
 func (s *Service) Login(ctx context.Context, email, password string) (string, User, time.Time, error) {
 	row, err := s.q.GetUserByEmail(ctx, NormalizeEmail(email))
 	if errors.Is(err, pgx.ErrNoRows) {
-		CheckPassword(string(dummyHash), password) // mesmo custo de quando o email existe
+		CheckPassword(string(dummyHash), password) // same cost as when the email exists
 		return "", User{}, time.Time{}, ErrInvalidCredentials
 	}
 	if err != nil {
@@ -86,7 +86,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, Us
 		return "", User{}, time.Time{}, err
 	}
 
-	// Faxina: aproveita o login para apagar sessões vencidas.
+	// Cleanup: use the login to delete expired sessions.
 	if err := s.q.DeleteExpiredSessions(ctx); err != nil {
 		log.Printf("failed to delete expired sessions: %v", err)
 	}
@@ -94,7 +94,7 @@ func (s *Service) Login(ctx context.Context, email, password string) (string, Us
 	return token, User{ID: row.ID, Email: row.Email, Name: row.Name, Role: Role(row.Role)}, expires, nil
 }
 
-// Authenticate devolve o dono da sessão, se ela existir, não tiver vencido e o usuário estiver ativo.
+// Authenticate returns the session owner if the session exists, hasn't expired and the user is active.
 func (s *Service) Authenticate(ctx context.Context, token string) (User, error) {
 	if token == "" {
 		return User{}, ErrUnauthenticated
@@ -109,7 +109,7 @@ func (s *Service) Authenticate(ctx context.Context, token string) (User, error) 
 	return User{ID: row.ID, Email: row.Email, Name: row.Name, Role: Role(row.Role)}, nil
 }
 
-// Logout apaga a sessão.
+// Logout deletes the session.
 func (s *Service) Logout(ctx context.Context, token string) error {
 	if token == "" {
 		return nil

@@ -8,13 +8,13 @@ import (
 
 const (
 	MinPasswordLength = 8
-	// bcrypt só considera os primeiros 72 bytes da senha; acima disso recusamos.
+	// bcrypt only uses the first 72 bytes of the password, so longer ones are rejected.
 	MaxPasswordLength = 72
 )
 
 var ErrWeakPassword = errors.New("password must have between 8 and 72 characters")
 
-// HashPassword gera o hash bcrypt da senha.
+// HashPassword returns the bcrypt hash of the password.
 func HashPassword(password string) (string, error) {
 	if len(password) < MinPasswordLength || len(password) > MaxPasswordLength {
 		return "", ErrWeakPassword
@@ -26,11 +26,11 @@ func HashPassword(password string) (string, error) {
 	return string(h), nil
 }
 
-// CheckPassword compara a senha com o hash em tempo constante.
+// CheckPassword compares the password with the hash in constant time.
 func CheckPassword(hash, password string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 
-// dummyHash é usado quando o email não existe, para o login levar o mesmo
-// tempo nos dois casos e não revelar quais emails estão cadastrados.
+// dummyHash is used when the email doesn't exist, so login takes the same
+// time in both cases and doesn't reveal which emails are registered.
 var dummyHash, _ = bcrypt.GenerateFromPassword([]byte("pharmacode-dummy-password"), bcrypt.DefaultCost)

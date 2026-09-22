@@ -4,7 +4,7 @@ import type { Page } from '../types'
 
 export const PAGE_SIZE = 20
 
-/** Carrega uma lista paginada e expõe reload() para depois de criar/editar/remover. */
+/** Loads a paginated list and exposes reload() for after create/update/delete. */
 export function usePaged<T>(fetcher: (limit: number, offset: number) => Promise<Page<T>>) {
   const [offset, setOffset] = useState(0)
   const [rows, setRows] = useState<T[]>([])

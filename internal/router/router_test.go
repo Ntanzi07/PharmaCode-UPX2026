@@ -22,7 +22,7 @@ import (
 
 const pwd = "senha-forte-1"
 
-// newServer monta a API inteira com fakes e um usuário de cada papel.
+// newServer builds the whole API with fakes and one user per role.
 func newServer(t *testing.T) (*httptest.Server, *testutil.FakeSummaryQuerier) {
 	t.Helper()
 	store := testutil.NewFakeUserStore()
@@ -54,7 +54,7 @@ func newServer(t *testing.T) (*httptest.Server, *testutil.FakeSummaryQuerier) {
 	return srv, summaries
 }
 
-// login devolve o cookie de sessão do usuário com esse papel.
+// login returns the session cookie of the user with that role.
 func login(t *testing.T, srv *httptest.Server, role string) *http.Cookie {
 	t.Helper()
 	res, err := http.Post(srv.URL+"/auth/login", "application/json",

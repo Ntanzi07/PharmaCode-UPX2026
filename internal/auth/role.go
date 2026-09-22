@@ -1,13 +1,13 @@
 package auth
 
-// Role é o papel do usuário no painel. Cada papel inclui as permissões dos
-// anteriores: editor < reviewer < admin.
+// Role is the user's role in the admin panel. Each role includes the permissions of the
+// previous ones: editor < reviewer < admin.
 type Role string
 
 const (
-	RoleEditor   Role = "editor"   // cadastra e edita remédios, embalagens e bulas
-	RoleReviewer Role = "reviewer" // + marca bula como revisada (farmacêutico)
-	RoleAdmin    Role = "admin"    // + gerencia usuários
+	RoleEditor   Role = "editor"   // creates and edits drugs, packages and leaflets
+	RoleReviewer Role = "reviewer" // + marks leaflets as reviewed (pharmacist)
+	RoleAdmin    Role = "admin"    // + manages users
 )
 
 var roleLevel = map[Role]int{
@@ -16,13 +16,13 @@ var roleLevel = map[Role]int{
 	RoleAdmin:    3,
 }
 
-// Valid diz se o papel é um dos conhecidos.
+// Valid reports whether the role is a known one.
 func (r Role) Valid() bool {
 	_, ok := roleLevel[r]
 	return ok
 }
 
-// AtLeast diz se o papel tem, no mínimo, as permissões de min.
+// AtLeast reports whether the role has at least the permissions of min.
 func (r Role) AtLeast(min Role) bool {
 	return r.Valid() && roleLevel[r] >= roleLevel[min]
 }

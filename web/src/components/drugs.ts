@@ -5,7 +5,7 @@ import type { Drug } from '../types'
 export const drugLabel = (d: Drug) =>
   `${d.brand_name || d.active_ingredient} — ${d.active_ingredient} (${d.registration_number})`
 
-/** Lista completa de remédios para os selects dos formulários. */
+/** Full drug list for the form pickers. */
 export function useDrugs() {
   const [drugs, setDrugs] = useState<Drug[]>([])
   useEffect(() => {

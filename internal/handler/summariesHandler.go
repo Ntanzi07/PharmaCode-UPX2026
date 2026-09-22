@@ -34,7 +34,7 @@ type createSummaryRequest struct {
 	MechanismOfAction string `json:"mechanism_of_action"`
 	Storage           string `json:"storage"`
 	SourceURL         string `json:"source_url"`
-	// Versão da bula oficial que foi resumida
+	// Version of the official leaflet that was summarized
 	LeafletExpedient   string `json:"leaflet_expedient" example:"0123456/24-5"`
 	LeafletPublishedAt string `json:"leaflet_published_at" example:"2024-05-31" format:"date"`
 }
@@ -52,7 +52,7 @@ type updateSummaryRequest struct {
 	MechanismOfAction string `json:"mechanism_of_action"`
 	Storage           string `json:"storage"`
 	SourceURL         string `json:"source_url"`
-	// Versão da bula oficial que foi resumida
+	// Version of the official leaflet that was summarized
 	LeafletExpedient   string `json:"leaflet_expedient" example:"0123456/24-5"`
 	LeafletPublishedAt string `json:"leaflet_published_at" example:"2024-05-31" format:"date"`
 }
@@ -72,13 +72,13 @@ func summaryRequiredFields(whatIsItFor, posology, sourceURL string) error {
 }
 
 // CreateSummary godoc
-// @Summary      Cadastra a bula simplificada de um remédio
+// @Summary      Create the simplified leaflet of a drug
 // @Tags         summaries
 // @Accept       json
 // @Produce      json
-// @Param        body  body      createSummaryRequest  true  "Resumo da bula"
+// @Param        body  body      createSummaryRequest  true  "Leaflet summary"
 // @Success      201   {object}  idResponse
-// @Failure      400   {string}  string  "json inválido ou campo obrigatório faltando"
+// @Failure      400   {string}  string  "invalid json or missing required field"
 // @Failure      404   {string}  string  "drug not found for this drug_id"
 // @Failure      409   {string}  string  "this drug already has a summary"
 // @Failure      500  {string}  string  "internal server error"
@@ -126,11 +126,11 @@ func (h *SummaryHandler) CreateSummary(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListSummaries godoc
-// @Summary      Lista bulas simplificadas (paginado)
+// @Summary      List simplified leaflets (paginated)
 // @Tags         summaries
 // @Produce      json
-// @Param        limit   query     int     false  "Itens por página (padrão 20, máx 100)"
-// @Param        offset  query     int     false  "Quantos itens pular (padrão 0)"
+// @Param        limit   query     int     false  "Items per page (default 20, max 100)"
+// @Param        offset  query     int     false  "How many items to skip (default 0)"
 // @Success      200  {object}  listResponse{data=[]db.ListSummariesRow}
 // @Failure      400  {string}  string  "invalid limit / invalid offset"
 // @Failure      500  {string}  string  "internal server error"
@@ -180,10 +180,10 @@ func (h *SummaryHandler) ListSummaries(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetSummaryByID godoc
-// @Summary      Busca uma bula simplificada pelo ID
+// @Summary      Get a simplified leaflet by ID
 // @Tags         summaries
 // @Produce      json
-// @Param        id   path      int     true  "ID do resumo"
+// @Param        id   path      int     true  "Summary ID"
 // @Success      200  {object}  db.GetSummaryByIDRow
 // @Failure      400  {string}  string  "invalid id"
 // @Failure      404  {string}  string  "summary not found"
@@ -214,10 +214,10 @@ func (h *SummaryHandler) GetSummaryByID(w http.ResponseWriter, r *http.Request) 
 }
 
 // GetSummaryByDrugID godoc
-// @Summary      Busca a bula simplificada de um remédio
+// @Summary      Get the simplified leaflet of a drug
 // @Tags         summaries
 // @Produce      json
-// @Param        drugID  path      int     true  "ID do remédio"
+// @Param        drugID  path      int     true  "Drug ID"
 // @Success      200  {object}  db.GetSummaryByDrugIDRow
 // @Failure      400  {string}  string  "invalid drug id"
 // @Failure      404  {string}  string  "summary not found"
@@ -248,13 +248,13 @@ func (h *SummaryHandler) GetSummaryByDrugID(w http.ResponseWriter, r *http.Reque
 }
 
 // UpdateSummary godoc
-// @Summary      Atualiza uma bula simplificada
+// @Summary      Update a simplified leaflet
 // @Tags         summaries
 // @Accept       json
-// @Param        id   path      int     true  "ID do resumo"
-// @Param        body  body      updateSummaryRequest  true  "Resumo da bula"
+// @Param        id   path      int     true  "Summary ID"
+// @Param        body  body      updateSummaryRequest  true  "Leaflet summary"
 // @Success      204
-// @Failure      400  {string}  string  "id ou json inválido / campo obrigatório faltando"
+// @Failure      400  {string}  string  "invalid id or json / missing required field"
 // @Failure      404  {string}  string  "summary not found"
 // @Failure      500  {string}  string  "internal server error"
 // @Router       /summaries/{id} [put]
@@ -294,10 +294,10 @@ func (h *SummaryHandler) UpdateSummary(w http.ResponseWriter, r *http.Request) {
 }
 
 // ReviewSummary godoc
-// @Summary      Marca uma bula simplificada como revisada
-// @Description  Quem revisou é o usuário logado (papel reviewer ou admin). Não recebe corpo.
+// @Summary      Mark a simplified leaflet as reviewed
+// @Description  The reviewer is the logged-in user (reviewer or admin role). No request body.
 // @Tags         summaries
-// @Param        id   path      int     true  "ID do resumo"
+// @Param        id   path      int     true  "Summary ID"
 // @Success      204
 // @Failure      400  {string}  string  "invalid id"
 // @Failure      401  {string}  string  "authentication required"
@@ -312,7 +312,7 @@ func (h *SummaryHandler) ReviewSummary(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// O middleware garante que existe usuário; a checagem é só defesa extra.
+	// The middleware guarantees a user; this check is just extra defense.
 	user, ok := auth.UserFrom(r.Context())
 	if !ok {
 		http.Error(w, "authentication required", http.StatusUnauthorized)
@@ -333,9 +333,9 @@ func (h *SummaryHandler) ReviewSummary(w http.ResponseWriter, r *http.Request) {
 }
 
 // DeleteSummary godoc
-// @Summary      Remove uma bula simplificada
+// @Summary      Delete a simplified leaflet
 // @Tags         summaries
-// @Param        id   path      int     true  "ID do resumo"
+// @Param        id   path      int     true  "Summary ID"
 // @Success      204
 // @Failure      400  {string}  string  "invalid id"
 // @Failure      404  {string}  string  "summary not found"

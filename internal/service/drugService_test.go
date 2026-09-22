@@ -33,7 +33,7 @@ func TestDrugService_Create(t *testing.T) {
 		assert.Equal(t, int64(1), id)
 	})
 
-	// brand_name e a unica coluna opcional da tabela drugs.
+	// brand_name is the only optional column of the drugs table.
 	t.Run("brand_name vazio vira NULL", func(t *testing.T) {
 		fake := testutil.NewFakeDrugQuerier()
 		svc := service.NewDrugService(fake)
@@ -85,8 +85,8 @@ func TestDrugService_Update(t *testing.T) {
 		assert.Equal(t, "novo", fake.LastUpdateParams.ActiveIngredient)
 	})
 
-	// Este caso so passou a existir depois de trocar a query de :exec para
-	// :execrows. Antes, um PUT em id inexistente devolvia sucesso.
+	// This case only exists since the query changed from :exec to
+	// :execrows. Before, a PUT on a missing id returned success.
 	t.Run("id inexistente vira ErrDrugNotFound", func(t *testing.T) {
 		fake := testutil.NewFakeDrugQuerier()
 		svc := service.NewDrugService(fake)

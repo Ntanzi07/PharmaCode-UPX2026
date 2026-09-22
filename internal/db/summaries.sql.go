@@ -364,8 +364,8 @@ type UpdateSummaryParams struct {
 	LeafletPublishedAt pgtype.Date `json:"leaflet_published_at"`
 }
 
-// Mudou o texto, a revisão anterior deixa de valer: a bula sai do app até
-// um farmacêutico revisar de novo.
+// The text changed, so the previous review no longer counts: the leaflet leaves the app until
+// a pharmacist reviews it again.
 func (q *Queries) UpdateSummary(ctx context.Context, arg UpdateSummaryParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateSummary,
 		arg.ID,

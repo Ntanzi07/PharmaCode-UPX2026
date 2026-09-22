@@ -225,13 +225,13 @@ definitions:
     - admin
     type: string
     x-enum-comments:
-      RoleAdmin: + gerencia usuários
-      RoleEditor: cadastra e edita remédios, embalagens e bulas
-      RoleReviewer: + marca bula como revisada (farmacêutico)
+      RoleAdmin: + manages users
+      RoleEditor: creates and edits drugs, packages and leaflets
+      RoleReviewer: + marks leaflets as reviewed (pharmacist)
     x-enum-descriptions:
-    - cadastra e edita remédios, embalagens e bulas
-    - + marca bula como revisada (farmacêutico)
-    - + gerencia usuários
+    - creates and edits drugs, packages and leaflets
+    - + marks leaflets as reviewed (pharmacist)
+    - + manages users
     x-enum-varnames:
     - RoleEditor
     - RoleReviewer
@@ -300,7 +300,7 @@ definitions:
       drug_interactions:
         type: string
       leaflet_expedient:
-        description: Versão da bula oficial que foi resumida
+        description: Version of the official leaflet that was summarized
         example: 0123456/24-5
         type: string
       leaflet_published_at:
@@ -403,7 +403,7 @@ definitions:
       drug_interactions:
         type: string
       leaflet_expedient:
-        description: Versão da bula oficial que foi resumida
+        description: Version of the official leaflet that was summarized
         example: 0123456/24-5
         type: string
       leaflet_published_at:
@@ -452,8 +452,8 @@ definitions:
 info:
   contact: {}
   description: |-
-    API que lê o código da caixa do remédio e retorna a bula simplificada.
-    Rota pública: GET /drugs/ean/{ean}. As demais exigem login (POST /auth/login grava um cookie de sessão).
+    API that reads the barcode on a medicine box and returns the simplified leaflet.
+    Public route: GET /drugs/ean/{ean}. All others require login (POST /auth/login sets a session cookie).
   title: PharmaCode API
   version: "1.0"
 paths:
@@ -461,10 +461,10 @@ paths:
     post:
       consumes:
       - application/json
-      description: Confere email e senha e grava o cookie de sessão (HttpOnly). No
-        Swagger, depois do login as outras rotas passam a funcionar neste mesmo navegador.
+      description: Checks email and password and sets the session cookie (HttpOnly).
+        In Swagger, after logging in the other routes work in this same browser.
       parameters:
-      - description: Credenciais
+      - description: Credentials
         in: body
         name: body
         required: true
@@ -489,7 +489,7 @@ paths:
           description: too many attempts
           schema:
             type: string
-      summary: Entra no painel
+      summary: Log in to the admin panel
       tags:
       - auth
   /auth/logout:
@@ -497,7 +497,7 @@ paths:
       responses:
         "204":
           description: No Content
-      summary: Sai do painel
+      summary: Log out of the admin panel
       tags:
       - auth
   /auth/me:
@@ -513,17 +513,17 @@ paths:
           description: authentication required
           schema:
             type: string
-      summary: Usuário logado
+      summary: Current user
       tags:
       - auth
   /auth/password:
     put:
       consumes:
       - application/json
-      description: Exige a senha atual. As outras sessões do usuário são encerradas;
-        a atual continua.
+      description: Requires the current password. The user's other sessions are ended;
+        the current one stays.
       parameters:
-      - description: Senha atual e nova (8 a 72 caracteres)
+      - description: Current and new password (8 to 72 characters)
         in: body
         name: body
         required: true
@@ -533,7 +533,7 @@ paths:
         "204":
           description: No Content
         "400":
-          description: senha nova fraca / json inválido
+          description: weak new password / invalid json
           schema:
             type: string
         "401":
@@ -544,17 +544,17 @@ paths:
           description: current password is wrong
           schema:
             type: string
-      summary: Troca a própria senha
+      summary: Change your own password
       tags:
       - auth
   /drugs:
     get:
       parameters:
-      - description: Itens por página (padrão 20, máx 100)
+      - description: Items per page (default 20, max 100)
         in: query
         name: limit
         type: integer
-      - description: Quantos itens pular (padrão 0)
+      - description: How many items to skip (default 0)
         in: query
         name: offset
         type: integer
@@ -580,14 +580,14 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Lista remédios (paginado)
+      summary: List drugs (paginated)
       tags:
       - drugs
     post:
       consumes:
       - application/json
       parameters:
-      - description: Dados do remédio
+      - description: Drug data
         in: body
         name: body
         required: true
@@ -601,7 +601,7 @@ paths:
           schema:
             $ref: '#/definitions/idResponse'
         "400":
-          description: json inválido ou campo obrigatório faltando
+          description: invalid json or missing required field
           schema:
             type: string
         "409":
@@ -612,13 +612,13 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Cadastra um remédio
+      summary: Create a drug
       tags:
       - drugs
   /drugs/{id}:
     delete:
       parameters:
-      - description: ID do remédio
+      - description: Drug ID
         in: path
         name: id
         required: true
@@ -638,19 +638,19 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Remove um remédio
+      summary: Delete a drug
       tags:
       - drugs
     put:
       consumes:
       - application/json
       parameters:
-      - description: ID do remédio
+      - description: Drug ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Dados do remédio
+      - description: Drug data
         in: body
         name: body
         required: true
@@ -660,7 +660,7 @@ paths:
         "204":
           description: No Content
         "400":
-          description: id ou json inválido
+          description: invalid id or json
           schema:
             type: string
         "404":
@@ -675,15 +675,15 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Atualiza um remédio
+      summary: Update a drug
       tags:
       - drugs
   /drugs/ean/{ean}:
     get:
-      description: Retorna os dados do remédio e o resumo da bula a partir do código
-        de barras da caixa
+      description: Returns the drug data and the leaflet summary from the barcode
+        on the box
       parameters:
-      - description: Código EAN da embalagem
+      - description: Package EAN barcode
         in: path
         name: ean
         required: true
@@ -707,17 +707,17 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Busca a bula simplificada pelo EAN
+      summary: Get the simplified leaflet by EAN
       tags:
       - drugs
   /packages:
     get:
       parameters:
-      - description: Itens por página (padrão 20, máx 100)
+      - description: Items per page (default 20, max 100)
         in: query
         name: limit
         type: integer
-      - description: Quantos itens pular (padrão 0)
+      - description: How many items to skip (default 0)
         in: query
         name: offset
         type: integer
@@ -743,16 +743,16 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Lista embalagens (paginado)
+      summary: List packages (paginated)
       tags:
       - packages
     post:
       consumes:
       - application/json
-      description: 'Uma embalagem pode ter vários EANs (ex.: código antigo e novo
-        convivendo na prateleira).'
+      description: A package can have several EANs (e.g. an old and a new code on
+        the shelf at the same time).
       parameters:
-      - description: Dados da embalagem
+      - description: Package data
         in: body
         name: body
         required: true
@@ -766,7 +766,7 @@ paths:
           schema:
             $ref: '#/definitions/idResponse'
         "400":
-          description: json inválido ou campo obrigatório faltando
+          description: invalid json or missing required field
           schema:
             type: string
         "404":
@@ -774,20 +774,20 @@ paths:
           schema:
             type: string
         "409":
-          description: ean ou presentation_registration já cadastrado
+          description: ean or presentation_registration already registered
           schema:
             type: string
         "500":
           description: internal server error
           schema:
             type: string
-      summary: Cadastra uma embalagem (apresentação) de um remédio
+      summary: Create a package (presentation) of a drug
       tags:
       - packages
   /packages/{id}:
     delete:
       parameters:
-      - description: ID da embalagem
+      - description: Package ID
         in: path
         name: id
         required: true
@@ -807,12 +807,12 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Remove uma embalagem
+      summary: Delete a package
       tags:
       - packages
     get:
       parameters:
-      - description: ID da embalagem
+      - description: Package ID
         in: path
         name: id
         required: true
@@ -836,19 +836,19 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Busca uma embalagem pelo ID
+      summary: Get a package by ID
       tags:
       - packages
     put:
       consumes:
       - application/json
       parameters:
-      - description: ID da embalagem
+      - description: Package ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Dados da embalagem
+      - description: Package data
         in: body
         name: body
         required: true
@@ -858,7 +858,7 @@ paths:
         "204":
           description: No Content
         "400":
-          description: id ou json inválido
+          description: invalid id or json
           schema:
             type: string
         "404":
@@ -866,24 +866,24 @@ paths:
           schema:
             type: string
         "409":
-          description: ean ou presentation_registration já cadastrado
+          description: ean or presentation_registration already registered
           schema:
             type: string
         "500":
           description: internal server error
           schema:
             type: string
-      summary: Atualiza uma embalagem
+      summary: Update a package
       tags:
       - packages
   /summaries:
     get:
       parameters:
-      - description: Itens por página (padrão 20, máx 100)
+      - description: Items per page (default 20, max 100)
         in: query
         name: limit
         type: integer
-      - description: Quantos itens pular (padrão 0)
+      - description: How many items to skip (default 0)
         in: query
         name: offset
         type: integer
@@ -909,14 +909,14 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Lista bulas simplificadas (paginado)
+      summary: List simplified leaflets (paginated)
       tags:
       - summaries
     post:
       consumes:
       - application/json
       parameters:
-      - description: Resumo da bula
+      - description: Leaflet summary
         in: body
         name: body
         required: true
@@ -930,7 +930,7 @@ paths:
           schema:
             $ref: '#/definitions/idResponse'
         "400":
-          description: json inválido ou campo obrigatório faltando
+          description: invalid json or missing required field
           schema:
             type: string
         "404":
@@ -945,13 +945,13 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Cadastra a bula simplificada de um remédio
+      summary: Create the simplified leaflet of a drug
       tags:
       - summaries
   /summaries/{id}:
     delete:
       parameters:
-      - description: ID do resumo
+      - description: Summary ID
         in: path
         name: id
         required: true
@@ -971,12 +971,12 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Remove uma bula simplificada
+      summary: Delete a simplified leaflet
       tags:
       - summaries
     get:
       parameters:
-      - description: ID do resumo
+      - description: Summary ID
         in: path
         name: id
         required: true
@@ -1000,19 +1000,19 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Busca uma bula simplificada pelo ID
+      summary: Get a simplified leaflet by ID
       tags:
       - summaries
     put:
       consumes:
       - application/json
       parameters:
-      - description: ID do resumo
+      - description: Summary ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Resumo da bula
+      - description: Leaflet summary
         in: body
         name: body
         required: true
@@ -1022,7 +1022,7 @@ paths:
         "204":
           description: No Content
         "400":
-          description: id ou json inválido / campo obrigatório faltando
+          description: invalid id or json / missing required field
           schema:
             type: string
         "404":
@@ -1033,15 +1033,15 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Atualiza uma bula simplificada
+      summary: Update a simplified leaflet
       tags:
       - summaries
   /summaries/{id}/review:
     patch:
-      description: Quem revisou é o usuário logado (papel reviewer ou admin). Não
-        recebe corpo.
+      description: The reviewer is the logged-in user (reviewer or admin role). No
+        request body.
       parameters:
-      - description: ID do resumo
+      - description: Summary ID
         in: path
         name: id
         required: true
@@ -1069,13 +1069,13 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Marca uma bula simplificada como revisada
+      summary: Mark a simplified leaflet as reviewed
       tags:
       - summaries
   /summaries/drug/{drugID}:
     get:
       parameters:
-      - description: ID do remédio
+      - description: Drug ID
         in: path
         name: drugID
         required: true
@@ -1099,7 +1099,7 @@ paths:
           description: internal server error
           schema:
             type: string
-      summary: Busca a bula simplificada de um remédio
+      summary: Get the simplified leaflet of a drug
       tags:
       - summaries
   /users:
@@ -1121,14 +1121,14 @@ paths:
           description: insufficient permissions
           schema:
             type: string
-      summary: Lista usuários do painel (admin)
+      summary: List admin panel users (admin)
       tags:
       - users
     post:
       consumes:
       - application/json
       parameters:
-      - description: Dados do usuário (senha de 8 a 72 caracteres)
+      - description: User data (password of 8 to 72 characters)
         in: body
         name: body
         required: true
@@ -1142,29 +1142,29 @@ paths:
           schema:
             $ref: '#/definitions/idResponse'
         "400":
-          description: dados inválidos
+          description: invalid data
           schema:
             type: string
         "409":
           description: email already registered
           schema:
             type: string
-      summary: Cria um usuário do painel (admin)
+      summary: Create an admin panel user (admin)
       tags:
       - users
   /users/{id}:
     put:
       consumes:
       - application/json
-      description: Desativar ou trocar o papel encerra as sessões do usuário. O último
-        admin ativo não pode ser rebaixado nem desativado.
+      description: Deactivating a user or changing their role ends their sessions.
+        The last active admin can't be demoted or deactivated.
       parameters:
-      - description: ID do usuário
+      - description: User ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Dados do usuário
+      - description: User data
         in: body
         name: body
         required: true
@@ -1174,7 +1174,7 @@ paths:
         "204":
           description: No Content
         "400":
-          description: dados inválidos
+          description: invalid data
           schema:
             type: string
         "404":
@@ -1185,21 +1185,21 @@ paths:
           description: email already registered / cannot remove the last active admin
           schema:
             type: string
-      summary: Atualiza nome, email, papel e status (admin)
+      summary: Update name, email, role and status (admin)
       tags:
       - users
   /users/{id}/password:
     put:
       consumes:
       - application/json
-      description: Encerra todas as sessões do usuário.
+      description: Ends all of the user's sessions.
       parameters:
-      - description: ID do usuário
+      - description: User ID
         in: path
         name: id
         required: true
         type: integer
-      - description: Senha nova (8 a 72 caracteres)
+      - description: New password (8 to 72 characters)
         in: body
         name: body
         required: true
@@ -1209,14 +1209,14 @@ paths:
         "204":
           description: No Content
         "400":
-          description: senha fraca
+          description: weak password
           schema:
             type: string
         "404":
           description: user not found
           schema:
             type: string
-      summary: Define uma senha nova para o usuário (admin)
+      summary: Set a new password for a user (admin)
       tags:
       - users
 swagger: "2.0"

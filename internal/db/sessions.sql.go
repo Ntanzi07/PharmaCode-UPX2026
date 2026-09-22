@@ -72,7 +72,7 @@ type DeleteUserSessionsExceptParams struct {
 	KeepTokenHash []byte `json:"keep_token_hash"`
 }
 
-// Usado na troca da própria senha: derruba as outras sessões e mantém a atual.
+// Used when users change their own password: ends their other sessions and keeps the current one.
 func (q *Queries) DeleteUserSessionsExcept(ctx context.Context, arg DeleteUserSessionsExceptParams) error {
 	_, err := q.db.Exec(ctx, deleteUserSessionsExcept, arg.UserID, arg.KeepTokenHash)
 	return err
@@ -94,7 +94,7 @@ type GetSessionUserRow struct {
 	Role  string `json:"role"`
 }
 
-// Só devolve a sessão se ela não expirou e o usuário continua ativo.
+// Only returns the session if it hasn't expired and the user is still active.
 func (q *Queries) GetSessionUser(ctx context.Context, tokenHash []byte) (GetSessionUserRow, error) {
 	row := q.db.QueryRow(ctx, getSessionUser, tokenHash)
 	var i GetSessionUserRow

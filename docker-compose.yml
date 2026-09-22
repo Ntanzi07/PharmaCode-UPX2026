@@ -43,14 +43,14 @@ services:
       migrate:
         condition: service_completed_successfully
     environment:
-      # Dentro da rede do compose o host do banco e "db", nao localhost,
-      # e a porta e sempre 5432 (a 5433 so existe na sua maquina).
+      # Inside the compose network the database host is "db", not localhost,
+      # and the port is always 5432 (5433 only exists on your machine).
       DATABASE_URL: postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}?sslmode=disable
       PORT: ${PORT:-8080}
-      # Login do painel
+      # Admin panel login
       SESSION_TTL: ${SESSION_TTL:-12h}
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
-      # Primeiro admin: so e criado se o banco ainda nao tiver nenhum usuario
+      # First admin: only created if the database has no users yet
       ADMIN_NAME: ${ADMIN_NAME:-Administrador}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
@@ -64,7 +64,7 @@ services:
     restart: unless-stopped
     depends_on:
       - api
-    # o nginx do container repassa /api/* para http://api:8080
+    # the container's nginx forwards /api/* to http://api:8080
     ports:
       - "${WEB_PORT:-3000}:80"
 

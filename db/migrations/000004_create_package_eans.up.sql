@@ -1,6 +1,6 @@
--- Uma mesma apresentação (package) pode ter mais de um EAN convivendo na
--- prateleira (ex.: Advil 400 com código antigo e novo). O EAN sai de
--- packages e vai para uma tabela própria, 1 package -> N EANs.
+-- The same presentation (package) can have more than one EAN on the
+-- shelf at the same time (e.g. Advil 400 with an old and a new code). The EAN
+-- moves out of packages into its own table, 1 package -> N EANs.
 CREATE TABLE package_eans
 (
     id         BIGSERIAL PRIMARY KEY,
@@ -15,7 +15,7 @@ CREATE TABLE package_eans
 
 CREATE INDEX idx_package_eans_package_id ON package_eans (package_id);
 
--- Leva os EANs que já existem para a tabela nova antes de apagar a coluna.
+-- Copy the existing EANs into the new table before dropping the column.
 INSERT INTO package_eans (package_id, ean)
 SELECT id, ean
 FROM packages;

@@ -17,8 +17,8 @@ INSERT INTO summaries (drug_id,
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id;
 
 -- name: UpdateSummary :execrows
--- Mudou o texto, a revisão anterior deixa de valer: a bula sai do app até
--- um farmacêutico revisar de novo.
+-- The text changed, so the previous review no longer counts: the leaflet leaves the app until
+-- a pharmacist reviews it again.
 UPDATE summaries
 SET what_is_it_for       = $2,
     posology             = $3,

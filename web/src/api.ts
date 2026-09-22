@@ -5,7 +5,7 @@ import type {
 
 const BASE = '/api'
 
-/** Evento disparado quando a API responde 401 no meio do uso */
+/** Event fired when the API answers 401 while the panel is in use */
 export const SESSION_EXPIRED = 'pharmacode:session-expired'
 
 export class ApiError extends Error {
@@ -21,10 +21,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     body: body !== undefined ? JSON.stringify(body) : undefined,
   })
   if (!res.ok) {
-    // A API responde erros em texto puro (http.Error)
+    // The API returns errors as plain text (http.Error)
     const text = (await res.text()).trim()
-    // Sessão venceu ou foi encerrada (ex.: admin desativou o usuário): avisa o app
-    // para voltar à tela de login. O próprio login e o /auth/me tratam o 401 sozinhos.
+    // Session expired or was ended (e.g. an admin deactivated the user): tell the app
+    // to go back to the login screen. Login and /auth/me handle their own 401.
     if (res.status === 401 && !path.startsWith('/auth/')) {
       window.dispatchEvent(new Event(SESSION_EXPIRED))
     }
@@ -56,7 +56,7 @@ export const api = {
     get: (id: number) => request<Summary>('GET', `/summaries/${id}`),
     create: (s: SummaryInput & { drug_id: number }) => request<{ id: number }>('POST', '/summaries', s),
     update: (id: number, s: SummaryInput) => request<void>('PUT', `/summaries/${id}`, s),
-    // quem revisou é o usuário logado; a API pega da sessão
+    // the reviewer is the logged-in user; the API takes it from the session
     review: (id: number) => request<void>('PATCH', `/summaries/${id}/review`),
     remove: (id: number) => request<void>('DELETE', `/summaries/${id}`),
   },
@@ -75,7 +75,7 @@ export const api = {
   },
 }
 
-/** Busca todos os remédios (a API limita 100 por página) para preencher selects. */
+/** Fetches every drug (the API caps pages at 100) to fill pickers. */
 export async function fetchAllDrugs(): Promise<Drug[]> {
   const all: Drug[] = []
   for (let offset = 0; ; offset += 100) {

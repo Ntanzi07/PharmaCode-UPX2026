@@ -32,7 +32,7 @@ type changePasswordRequest struct {
 	NewPassword     string `json:"new_password"`
 }
 
-// clientIP pega o IP de quem chamou. Atrás do nginx do front, vem no X-Real-IP.
+// clientIP returns the caller's IP. Behind the frontend's nginx it comes in X-Real-IP.
 func clientIP(r *http.Request) string {
 	if ip := r.Header.Get("X-Real-IP"); ip != "" {
 		return ip
@@ -45,12 +45,12 @@ func clientIP(r *http.Request) string {
 }
 
 // Login godoc
-// @Summary      Entra no painel
-// @Description  Confere email e senha e grava o cookie de sessão (HttpOnly). No Swagger, depois do login as outras rotas passam a funcionar neste mesmo navegador.
+// @Summary      Log in to the admin panel
+// @Description  Checks email and password and sets the session cookie (HttpOnly). In Swagger, after logging in the other routes work in this same browser.
 // @Tags         auth
 // @Accept       json
 // @Produce      json
-// @Param        body  body      loginRequest  true  "Credenciais"
+// @Param        body  body      loginRequest  true  "Credentials"
 // @Success      200   {object}  auth.User
 // @Failure      400   {string}  string  "invalid json"
 // @Failure      401   {string}  string  "invalid email or password"
@@ -87,7 +87,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 }
 
 // Logout godoc
-// @Summary      Sai do painel
+// @Summary      Log out of the admin panel
 // @Tags         auth
 // @Success      204
 // @Router       /auth/logout [post]
@@ -102,7 +102,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 }
 
 // Me godoc
-// @Summary      Usuário logado
+// @Summary      Current user
 // @Tags         auth
 // @Produce      json
 // @Success      200  {object}  auth.User
@@ -114,13 +114,13 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 }
 
 // ChangePassword godoc
-// @Summary      Troca a própria senha
-// @Description  Exige a senha atual. As outras sessões do usuário são encerradas; a atual continua.
+// @Summary      Change your own password
+// @Description  Requires the current password. The user's other sessions are ended; the current one stays.
 // @Tags         auth
 // @Accept       json
-// @Param        body  body  changePasswordRequest  true  "Senha atual e nova (8 a 72 caracteres)"
+// @Param        body  body  changePasswordRequest  true  "Current and new password (8 to 72 characters)"
 // @Success      204
-// @Failure      400  {string}  string  "senha nova fraca / json inválido"
+// @Failure      400  {string}  string  "weak new password / invalid json"
 // @Failure      401  {string}  string  "authentication required"
 // @Failure      403  {string}  string  "current password is wrong"
 // @Router       /auth/password [put]
@@ -137,7 +137,7 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		token = cookie.Value
 	}
 
-	// Mesma proteção do login: senha atual errada repetidas vezes bloqueia.
+	// Same protection as login: repeatedly wrong current passwords get blocked.
 	key := "pwd|" + clientIP(r) + "|" + user.Email
 	if !h.limiter.Allowed(key) {
 		http.Error(w, "too many attempts, try again in a few minutes", http.StatusTooManyRequests)

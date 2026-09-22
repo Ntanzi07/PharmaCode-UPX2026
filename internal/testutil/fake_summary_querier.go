@@ -21,7 +21,7 @@ func PgError(code string) error {
 	return &pgconn.PgError{Code: code, Message: "fake postgres error " + code}
 }
 
-// PgConstraintError é um PgError que também informa qual constraint falhou.
+// PgConstraintError is a PgError that also tells which constraint failed.
 func PgConstraintError(code, constraint string) error {
 	return &pgconn.PgError{Code: code, ConstraintName: constraint, Message: "fake postgres error " + code}
 }
@@ -122,7 +122,7 @@ func (f *FakeSummaryQuerier) UpdateSummary(ctx context.Context, arg db.UpdateSum
 
 	row, ok := f.rows[arg.ID]
 	if !ok {
-		// Zero linhas afetadas: e assim que :execrows sinaliza "nao existe".
+		// Zero affected rows: that is how :execrows signals "doesn't exist".
 		return 0, nil
 	}
 
@@ -140,7 +140,7 @@ func (f *FakeSummaryQuerier) UpdateSummary(ctx context.Context, arg db.UpdateSum
 	row.SourceUrl = arg.SourceUrl
 	row.LeafletExpedient = arg.LeafletExpedient
 	row.LeafletPublishedAt = arg.LeafletPublishedAt
-	// como no banco: editar o texto invalida a revisão
+	// like in the database: editing the text invalidates the review
 	row.ReviewedBy = pgtype.Text{}
 	row.ReviewedAt = pgtype.Timestamptz{}
 	f.rows[arg.ID] = row
@@ -199,7 +199,7 @@ func (f *FakeSummaryQuerier) ListSummaries(ctx context.Context, arg db.ListSumma
 	for id := range f.rows {
 		ids = append(ids, id)
 	}
-	// Map em Go nao tem ordem garantida; sem ordenar, o teste ficaria flaky.
+	// Go maps have no guaranteed order; without sorting, the test would be flaky.
 	sort.Slice(ids, func(i, j int) bool { return ids[i] < ids[j] })
 
 	var out []db.ListSummariesRow

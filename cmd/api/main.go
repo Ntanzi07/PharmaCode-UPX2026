@@ -19,8 +19,8 @@ import (
 
 // @title           PharmaCode API
 // @version         1.0
-// @description     API que lê o código da caixa do remédio e retorna a bula simplificada.
-// @description     Rota pública: GET /drugs/ean/{ean}. As demais exigem login (POST /auth/login grava um cookie de sessão).
+// @description     API that reads the barcode on a medicine box and returns the simplified leaflet.
+// @description     Public route: GET /drugs/ean/{ean}. All others require login (POST /auth/login sets a session cookie).
 // @BasePath        /
 func main() {
 	cfg, err := config.Load()
@@ -50,7 +50,7 @@ func main() {
 
 	bootstrapAdmin(userSvc, cfg)
 
-	// 5 senhas erradas em 15 minutos bloqueiam aquele IP + email
+	// 5 wrong passwords within 15 minutes lock that IP + email
 	limiter := auth.NewLoginLimiter(5, 15*time.Minute)
 
 	r := router.New(router.Handlers{
@@ -67,8 +67,8 @@ func main() {
 	}
 }
 
-// bootstrapAdmin cria o primeiro admin a partir de ADMIN_EMAIL / ADMIN_PASSWORD
-// quando o banco ainda não tem nenhum usuário. Depois disso, as variáveis são ignoradas.
+// bootstrapAdmin creates the first admin from ADMIN_EMAIL / ADMIN_PASSWORD
+// when the database has no users yet. After that, the variables are ignored.
 func bootstrapAdmin(users *service.UserService, cfg *config.Config) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()

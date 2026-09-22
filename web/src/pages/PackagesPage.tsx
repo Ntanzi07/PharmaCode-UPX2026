@@ -113,7 +113,7 @@ function PackageForm({ pkg, drugs, onClose, onSaved }: FormProps) {
       if (pkg) {
         await api.packages.update(pkg.id, { ...fields, drug_id: drugId })
       } else {
-        // O POST /packages recebe o número de registro, não o ID do remédio
+        // POST /packages takes the registration number, not the drug ID
         const drug = drugs.find((d) => d.id === drugId)!
         await api.packages.create({ ...fields, registration_number: drug.registration_number })
       }

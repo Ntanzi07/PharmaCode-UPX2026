@@ -19,9 +19,9 @@ type fakeSession struct {
 	expiresAt time.Time
 }
 
-// FakeUserStore guarda usuários e sessões em memória. Implementa tanto o
-// auth.Querier quanto o service.UserQuerier, então login, middleware e
-// gestão de usuários enxergam os mesmos dados nos testes.
+// FakeUserStore keeps users and sessions in memory. It implements both
+// auth.Querier and service.UserQuerier, so login, middleware and
+// user management see the same data in tests.
 type FakeUserStore struct {
 	mu       sync.Mutex
 	nextID   int64
@@ -35,7 +35,7 @@ func NewFakeUserStore() *FakeUserStore {
 	return &FakeUserStore{nextID: 1, users: map[int64]db.User{}, Now: time.Now}
 }
 
-// SeedUser grava um usuário já com hash de senha (use auth.HashPassword).
+// SeedUser stores a user with an already hashed password (use auth.HashPassword).
 func (f *FakeUserStore) SeedUser(u db.User) db.User {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -49,14 +49,14 @@ func (f *FakeUserStore) SeedUser(u db.User) db.User {
 	return u
 }
 
-// User devolve o usuário como está no "banco" (para asserts).
+// User returns the user as stored in the "database" (for asserts).
 func (f *FakeUserStore) User(id int64) db.User {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return f.users[id]
 }
 
-// SessionCount conta as sessões de um usuário.
+// SessionCount counts a user's sessions.
 func (f *FakeUserStore) SessionCount(userID int64) int {
 	f.mu.Lock()
 	defer f.mu.Unlock()

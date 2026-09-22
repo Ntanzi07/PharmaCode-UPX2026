@@ -32,20 +32,20 @@ type UpdatePackageInput struct {
 	PresentationRegistration string
 }
 
-// Nome da constraint UNIQUE que o Postgres gera para packages.presentation_registration.
+// Name of the UNIQUE constraint Postgres generates for packages.presentation_registration.
 const presentationRegistrationConstraint = "packages_presentation_registration_key"
 
-// packageWriteError traduz os erros do Postgres de insert/update de package.
+// packageWriteError maps Postgres errors from package inserts/updates.
 func packageWriteError(err error) error {
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 		switch pgErr.Code {
-		case "23505": // unique_violation: EAN ou registro da apresentação repetido
+		case "23505": // unique_violation: duplicate EAN or presentation registration
 			if pgErr.ConstraintName == presentationRegistrationConstraint {
 				return ErrDuplicatePresentation
 			}
 			return ErrDuplicateEAN
-		case "23503": // foreign_key_violation: drug_id não existe
+		case "23503": // foreign_key_violation: drug_id doesn't exist
 			return ErrDrugNotFound
 		}
 	}

@@ -3,8 +3,8 @@ import { useRef } from 'react'
 type Props = { value: string[]; onChange: (eans: string[]) => void }
 
 /**
- * Editor de lista de EANs: um campo por código, com botão para adicionar e remover.
- * Enter num campo cria o próximo (útil com leitor de código de barras, que manda Enter no final).
+ * EAN list editor: one field per code, with buttons to add and remove.
+ * Enter in a field creates the next one (handy with barcode scanners, which send Enter at the end).
  */
 export default function EanListInput({ value, onChange }: Props) {
   const refs = useRef<(HTMLInputElement | null)[]>([])

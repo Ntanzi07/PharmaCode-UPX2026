@@ -3,7 +3,7 @@ INSERT INTO sessions (token_hash, user_id, expires_at)
 VALUES ($1, $2, $3);
 
 -- name: GetSessionUser :one
--- Só devolve a sessão se ela não expirou e o usuário continua ativo.
+-- Only returns the session if it hasn't expired and the user is still active.
 SELECT u.id, u.email, u.name, u.role
 FROM sessions AS s
          INNER JOIN users AS u ON u.id = s.user_id
@@ -27,7 +27,7 @@ FROM sessions
 WHERE expires_at <= NOW();
 
 -- name: DeleteUserSessionsExcept :exec
--- Usado na troca da própria senha: derruba as outras sessões e mantém a atual.
+-- Used when users change their own password: ends their other sessions and keeps the current one.
 DELETE
 FROM sessions
 WHERE user_id = @user_id

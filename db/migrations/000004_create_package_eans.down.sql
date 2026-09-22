@@ -1,5 +1,5 @@
--- Volta a ter um EAN por package. Se um package tiver mais de um EAN,
--- fica o menor; packages sem nenhum EAN são apagados (a coluna é NOT NULL).
+-- Back to one EAN per package. If a package has more than one EAN,
+-- the smallest is kept; packages without any EAN are deleted (the column is NOT NULL).
 ALTER TABLE packages
     ADD COLUMN ean VARCHAR(13);
 

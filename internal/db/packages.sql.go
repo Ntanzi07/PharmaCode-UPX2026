@@ -34,9 +34,9 @@ type CreatePackageParams struct {
 	Eans                     []string    `json:"eans"`
 }
 
-// Cria o package e os EANs dele num único comando (atômico): se um EAN já
-// existir, nada é gravado. Sem remédio com esse registration_number, não
-// retorna linha (pgx.ErrNoRows).
+// Creates the package and its EANs in a single (atomic) statement: if an EAN
+// already exists, nothing is written. If no drug has this registration_number,
+// no row is returned (pgx.ErrNoRows).
 func (q *Queries) CreatePackage(ctx context.Context, arg CreatePackageParams) (int64, error) {
 	row := q.db.QueryRow(ctx, createPackage,
 		arg.Description,
@@ -246,8 +246,8 @@ type UpdatePackageParams struct {
 	Eans                     []string    `json:"eans"`
 }
 
-// Atualiza o package e sincroniza a lista de EANs: remove os que saíram da
-// lista e insere os novos, tudo num único comando.
+// Updates the package and syncs its EAN list: removes the ones no longer in
+// the list and inserts the new ones, all in a single statement.
 func (q *Queries) UpdatePackage(ctx context.Context, arg UpdatePackageParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updatePackage,
 		arg.DrugID,

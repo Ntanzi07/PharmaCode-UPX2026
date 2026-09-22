@@ -40,7 +40,7 @@ func TestSummaryService_Create_EmptyOptionalBecomesNull(t *testing.T) {
 	svc := service.NewSummaryService(fake)
 
 	in := validCreateInput()
-	in.Storage = "" // opcional, nao informado
+	in.Storage = "" // optional, not provided
 	in.AdverseEffects = "Nausea"
 
 	_, err := svc.Create(context.Background(), in)

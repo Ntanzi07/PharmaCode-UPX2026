@@ -39,7 +39,7 @@ type setPasswordRequest struct {
 	Password string `json:"password" example:"nova-senha-forte"`
 }
 
-// userErrorStatus traduz erros do UserService para HTTP.
+// userErrorStatus maps UserService errors to HTTP status codes.
 func userErrorStatus(err error) (int, bool) {
 	switch {
 	case errors.Is(err, service.ErrUserNotFound):
@@ -63,7 +63,7 @@ func writeUserError(w http.ResponseWriter, err error, action string) {
 }
 
 // ListUsers godoc
-// @Summary      Lista usuários do painel (admin)
+// @Summary      List admin panel users (admin)
 // @Tags         users
 // @Produce      json
 // @Success      200  {array}   db.ListUsersRow
@@ -83,13 +83,13 @@ func (h *UserHandler) ListUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 // CreateUser godoc
-// @Summary      Cria um usuário do painel (admin)
+// @Summary      Create an admin panel user (admin)
 // @Tags         users
 // @Accept       json
 // @Produce      json
-// @Param        body  body      createUserRequest  true  "Dados do usuário (senha de 8 a 72 caracteres)"
+// @Param        body  body      createUserRequest  true  "User data (password of 8 to 72 characters)"
 // @Success      201   {object}  idResponse
-// @Failure      400   {string}  string  "dados inválidos"
+// @Failure      400   {string}  string  "invalid data"
 // @Failure      409   {string}  string  "email already registered"
 // @Router       /users [post]
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
@@ -112,14 +112,14 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateUser godoc
-// @Summary      Atualiza nome, email, papel e status (admin)
-// @Description  Desativar ou trocar o papel encerra as sessões do usuário. O último admin ativo não pode ser rebaixado nem desativado.
+// @Summary      Update name, email, role and status (admin)
+// @Description  Deactivating a user or changing their role ends their sessions. The last active admin can't be demoted or deactivated.
 // @Tags         users
 // @Accept       json
-// @Param        id    path  int                true  "ID do usuário"
-// @Param        body  body  updateUserRequest  true  "Dados do usuário"
+// @Param        id    path  int                true  "User ID"
+// @Param        body  body  updateUserRequest  true  "User data"
 // @Success      204
-// @Failure      400  {string}  string  "dados inválidos"
+// @Failure      400  {string}  string  "invalid data"
 // @Failure      404  {string}  string  "user not found"
 // @Failure      409  {string}  string  "email already registered / cannot remove the last active admin"
 // @Router       /users/{id} [put]
@@ -148,14 +148,14 @@ func (h *UserHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // SetUserPassword godoc
-// @Summary      Define uma senha nova para o usuário (admin)
-// @Description  Encerra todas as sessões do usuário.
+// @Summary      Set a new password for a user (admin)
+// @Description  Ends all of the user's sessions.
 // @Tags         users
 // @Accept       json
-// @Param        id    path  int                 true  "ID do usuário"
-// @Param        body  body  setPasswordRequest  true  "Senha nova (8 a 72 caracteres)"
+// @Param        id    path  int                 true  "User ID"
+// @Param        body  body  setPasswordRequest  true  "New password (8 to 72 characters)"
 // @Success      204
-// @Failure      400  {string}  string  "senha fraca"
+// @Failure      400  {string}  string  "weak password"
 // @Failure      404  {string}  string  "user not found"
 // @Router       /users/{id}/password [put]
 func (h *UserHandler) SetUserPassword(w http.ResponseWriter, r *http.Request) {

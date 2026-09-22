@@ -99,9 +99,9 @@ func (s *UserService) Get(ctx context.Context, id int64) (db.GetUserByIDRow, err
 	return row, err
 }
 
-// Update altera dados, papel e status. Não deixa o sistema ficar sem nenhum
-// admin ativo. Se o usuário foi desativado ou mudou de papel, derruba as
-// sessões dele para a mudança valer na hora.
+// Update changes data, role and status. It never leaves the system without an
+// active admin. If the user was deactivated or changed role, their sessions
+// are ended so the change takes effect immediately.
 func (s *UserService) Update(ctx context.Context, id int64, in UpdateUserInput) error {
 	email, err := validateUser(in.Name, in.Email, in.Role)
 	if err != nil {
@@ -147,7 +147,7 @@ func (s *UserService) Update(ctx context.Context, id int64, in UpdateUserInput) 
 	return nil
 }
 
-// SetPassword é a troca feita pelo admin: define a senha e derruba todas as sessões do usuário.
+// SetPassword is the admin reset: sets the password and ends all of the user's sessions.
 func (s *UserService) SetPassword(ctx context.Context, id int64, password string) error {
 	hash, err := auth.HashPassword(password)
 	if err != nil {
@@ -163,8 +163,8 @@ func (s *UserService) SetPassword(ctx context.Context, id int64, password string
 	return s.queries.DeleteUserSessions(ctx, id)
 }
 
-// ChangeOwnPassword é a troca feita pelo próprio usuário: exige a senha atual
-// e mantém só a sessão em uso.
+// ChangeOwnPassword is the user changing their own password: requires the current one
+// and keeps only the session in use.
 func (s *UserService) ChangeOwnPassword(ctx context.Context, id int64, sessionToken, current, next string) error {
 	hash, err := s.queries.GetUserPasswordHash(ctx, id)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -189,8 +189,8 @@ func (s *UserService) ChangeOwnPassword(ctx context.Context, id int64, sessionTo
 	})
 }
 
-// EnsureAdmin cria o primeiro admin quando o banco ainda não tem nenhum usuário.
-// Devolve true se criou.
+// EnsureAdmin creates the first admin when the database has no users yet.
+// Returns true if it created one.
 func (s *UserService) EnsureAdmin(ctx context.Context, name, email, password string) (bool, error) {
 	n, err := s.queries.CountUsers(ctx)
 	if err != nil || n > 0 {
