@@ -56,7 +56,7 @@ export default function SummariesPage() {
             {rows.map((s) => (
               <tr key={s.id}>
                 <td className="muted">{s.id}</td>
-                <td>
+                <td className="brand_name">
                   <strong>{s.brand_name || s.active_ingredient}</strong>
                   <div className="muted small">{s.active_ingredient}</div>
                 </td>

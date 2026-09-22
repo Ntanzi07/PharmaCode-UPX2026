@@ -73,7 +73,7 @@ h3 { font-size: 14px; margin: 0 0 4px; text-transform: uppercase; letter-spacing
   padding: 0 14px; color: var(--muted); font-weight: 500;
   border-bottom: 2px solid transparent;
 }
-.tab:hover { color: var(--text); background: none; }
+.tab:hover { color: var(--text); background:  var(--bg); }
 .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
 
 .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
@@ -118,14 +118,14 @@ textarea { resize: vertical; }
   overflow-x: auto;
 }
 table { width: 100%; border-collapse: collapse; }
-th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: center; }
 th { white-space: nowrap; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; background: var(--bg); }
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr:hover td { background: color-mix(in srgb, var(--primary) 4%, transparent); }
 td.actions { white-space: nowrap; text-align: right; }
 td.actions button { margin-left: 6px; padding: 4px 10px; font-size: 13px; }
-/* o clamp fica numa div dentro da célula: display:-webkit-box direto no <td> quebra a tabela */
 td.purpose { width: 38%; min-width: 220px; }
+td.brand_name strong { white-space: nowrap; }
 .clamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }
 td.empty { text-align: center; color: var(--muted); padding: 32px; }
 .mono { font-family: ui-monospace, 'Cascadia Code', Consolas, monospace; font-size: 13px; }

@@ -28,7 +28,7 @@ export default function LoginPage() {
     <div className="login-wrap">
       <form className="login-card" onSubmit={submit}>
         <div className="brand login-brand">
-          <span className="logo">℞</span> PharmaCode <small>admin</small>
+          <span className="logo">P</span> PharmaCode
         </div>
         <p className="muted">Entre com a sua conta para cadastrar e revisar bulas.</p>
         {expired && !err && <div className="alert info">Sua sessão terminou. Entre de novo.</div>}

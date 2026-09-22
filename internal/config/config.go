@@ -11,14 +11,10 @@ import (
 )
 
 type Config struct {
-	DatabaseURL string
-	Port        string
-
-	// Sessão do painel
-	SessionTTL   time.Duration // SESSION_TTL, ex.: "12h" (padrão 12h)
-	CookieSecure bool          // COOKIE_SECURE=true em produção (HTTPS)
-
-	// Primeiro admin: só é usado se o banco ainda não tiver nenhum usuário.
+	DatabaseURL   string
+	Port          string
+	SessionTTL    time.Duration
+	CookieSecure  bool
 	AdminName     string
 	AdminEmail    string
 	AdminPassword string

@@ -92,7 +92,6 @@ func TestService_AuthenticateAndLogout(t *testing.T) {
 	_, err = svc.Authenticate(ctx, "token-inventado")
 	assert.ErrorIs(t, err, auth.ErrUnauthenticated)
 
-	// sessão vencida
 	store.Now = func() time.Time { return time.Now().Add(2 * time.Hour) }
 	_, err = svc.Authenticate(ctx, token)
 	assert.ErrorIs(t, err, auth.ErrUnauthenticated)

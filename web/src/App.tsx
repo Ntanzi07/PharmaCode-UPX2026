@@ -56,7 +56,7 @@ function Shell() {
     <>
       <header className="topbar">
         <div className="brand">
-          <span className="logo">℞</span> PharmaCode <small>admin</small>
+          <span className="logo">P</span> PharmaCode
         </div>
         <nav className="tabs">
           {tabs.map((t) => (
