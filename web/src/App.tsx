@@ -4,6 +4,7 @@ import PackagesPage from './pages/PackagesPage'
 import SummariesPage from './pages/SummariesPage'
 import LookupPage from './pages/LookupPage'
 import UsersPage from './pages/UsersPage'
+import ImportPage from './pages/ImportPage'
 import LoginPage from './pages/LoginPage'
 import { ToastProvider } from './components/Toast'
 import { AuthProvider, useAuth } from './components/auth'
@@ -15,6 +16,7 @@ const TABS: { key: string; label: string; min: Role; el: React.ReactNode }[] = [
   { key: 'packages', label: 'Embalagens', min: 'editor', el: <PackagesPage /> },
   { key: 'summaries', label: 'Bulas', min: 'editor', el: <SummariesPage /> },
   { key: 'lookup', label: 'Consultar EAN', min: 'editor', el: <LookupPage /> },
+  { key: 'import', label: 'Importar', min: 'editor', el: <ImportPage /> },
   { key: 'users', label: 'Usuários', min: 'admin', el: <UsersPage /> },
 ]
 

@@ -13,6 +13,7 @@ type Handlers struct {
 	Package *handler.PackageHandler
 	Summary *handler.SummaryHandler
 	Auth    *handler.AuthHandler
+	Import  *handler.ImportHandler
 	User    *handler.UserHandler
 }
 
@@ -59,6 +60,11 @@ func New(h Handlers, mw *auth.Middleware) http.Handler {
 	mux.Handle("PUT /summaries/{id}", editor(h.Summary.UpdateSummary))
 	mux.Handle("PATCH /summaries/{id}/review", reviewer(h.Summary.ReviewSummary))
 	mux.Handle("DELETE /summaries/{id}", editor(h.Summary.DeleteSummary))
+
+	// --- spreadsheet import ---
+	mux.Handle("GET /imports/template", editor(h.Import.DownloadTemplate))
+	mux.Handle("POST /imports/preview", editor(h.Import.PreviewImport))
+	mux.Handle("POST /imports/apply", editor(h.Import.ApplyImport))
 
 	// --- admin panel users ---
 	mux.Handle("GET /users", admin(h.User.ListUsers))

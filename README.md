@@ -61,6 +61,35 @@ sqlc generate                         # after changing db/queries or db/migratio
 swag init -g cmd/api/main.go -o docs --overridesFile .swaggo --parseDependency --useStructName
 ```
 
+### Example data (seed)
+
+`db/seed/advil_12h.sql` fills the database with Advil 12h: the drug, its three
+presentations with their EANs and a simplified leaflet. Handy for a demo.
+
+```bash
+docker compose exec -T db psql -U bula -d bula < db/seed/advil_12h.sql
+```
+
+The leaflet comes in as not reviewed on purpose: review it in the panel to see it
+show up in `GET /drugs/ean/{ean}`.
+
+### Spreadsheet import
+
+The panel has an **Importar** tab (editor and up) to register many drugs at once:
+
+1. Download the template (`GET /imports/template`): an `.xlsx` with the sheets
+   `remedios` (drug + optional leaflet), `embalagens` (presentation + up to three
+   EANs) and `instrucoes` (what each column means).
+2. Upload the filled file and press **Conferir** (`POST /imports/preview`): the API
+   validates every row and runs the whole import inside a transaction it rolls back,
+   so the counts are real and nothing is written.
+3. Press **Importar** (`POST /imports/apply`) to save it, all in one transaction.
+
+Rows are matched by registration number, presentation registration and EAN, so
+importing the same file again updates instead of duplicating. Imported leaflets
+come in as not reviewed, and an EAN that already belongs to another package is
+reported as an error instead of being moved.
+
 ## Permissions
 
 | Role | Can |

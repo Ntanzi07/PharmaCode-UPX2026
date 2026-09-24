@@ -46,6 +46,7 @@ func main() {
 	packageSvc := service.NewPackageService(queries)
 	summarySvc := service.NewSummaryService(queries)
 	userSvc := service.NewUserService(queries)
+	importSvc := service.NewImportService(pool)
 	authSvc := auth.NewService(queries, cfg.SessionTTL)
 
 	bootstrapAdmin(userSvc, cfg)
@@ -59,6 +60,7 @@ func main() {
 		Summary: handler.NewSummaryHandler(summarySvc),
 		Auth:    handler.NewAuthHandler(authSvc, userSvc, limiter, cfg.CookieSecure),
 		User:    handler.NewUserHandler(userSvc),
+		Import:  handler.NewImportHandler(importSvc),
 	}, auth.NewMiddleware(authSvc))
 
 	log.Printf("server listening on :%s", cfg.Port)

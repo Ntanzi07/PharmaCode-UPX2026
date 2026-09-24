@@ -144,6 +144,34 @@ definitions:
       when_to_seek_help:
         type: string
     type: object
+  ImportCounts:
+    properties:
+      created:
+        example: 12
+        type: integer
+      updated:
+        example: 3
+        type: integer
+    type: object
+  ImportResult:
+    properties:
+      applied:
+        description: 'Applied is false on a preview and on anything that failed: nothing
+          was written.'
+        type: boolean
+      drugs:
+        $ref: '#/definitions/ImportCounts'
+      eans:
+        $ref: '#/definitions/ImportCounts'
+      errors:
+        items:
+          $ref: '#/definitions/RowError'
+        type: array
+      packages:
+        $ref: '#/definitions/ImportCounts'
+      summaries:
+        $ref: '#/definitions/ImportCounts'
+    type: object
   ListDrugsRow:
     properties:
       active_ingredient:
@@ -236,6 +264,21 @@ definitions:
     - RoleEditor
     - RoleReviewer
     - RoleAdmin
+  RowError:
+    properties:
+      column:
+        example: ean_1
+        type: string
+      line:
+        example: 7
+        type: integer
+      message:
+        example: must have 8 to 13 digits
+        type: string
+      sheet:
+        example: embalagens
+        type: string
+    type: object
   User:
     properties:
       email:
@@ -710,6 +753,90 @@ paths:
       summary: Get the simplified leaflet by EAN
       tags:
       - drugs
+  /imports/apply:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Same checks as the preview, and then saves everything in one transaction.
+        Rows are matched by registration number, presentation registration and EAN,
+        so importing the same file again updates instead of duplicating. Imported
+        leaflets come in as not reviewed.
+      parameters:
+      - description: Spreadsheet filled in from the template (.xlsx)
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ImportResult'
+        "400":
+          description: file missing, too big or not a valid spreadsheet
+          schema:
+            type: string
+        "401":
+          description: authentication required
+          schema:
+            type: string
+        "422":
+          description: the spreadsheet has errors; nothing was saved
+          schema:
+            $ref: '#/definitions/ImportResult'
+      summary: Import a spreadsheet
+      tags:
+      - imports
+  /imports/preview:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Reads the file, validates every row and runs the import inside
+        a transaction that is rolled back. The counts are real; the database is untouched.
+      parameters:
+      - description: Spreadsheet filled in from the template (.xlsx)
+        in: formData
+        name: file
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ImportResult'
+        "400":
+          description: file missing, too big or not a valid spreadsheet
+          schema:
+            type: string
+        "401":
+          description: authentication required
+          schema:
+            type: string
+      summary: Check a spreadsheet without saving anything
+      tags:
+      - imports
+  /imports/template:
+    get:
+      description: .xlsx with the "remedios" and "embalagens" sheets, an example row
+        and a sheet explaining every column.
+      produces:
+      - application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "401":
+          description: authentication required
+          schema:
+            type: string
+      summary: Download the spreadsheet template
+      tags:
+      - imports
   /packages:
     get:
       parameters:

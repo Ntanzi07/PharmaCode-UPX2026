@@ -403,6 +403,126 @@ const docTemplate = `{
                 }
             }
         },
+        "/imports/apply": {
+            "post": {
+                "description": "Same checks as the preview, and then saves everything in one transaction. Rows are matched by registration number, presentation registration and EAN, so importing the same file again updates instead of duplicating. Imported leaflets come in as not reviewed.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "imports"
+                ],
+                "summary": "Import a spreadsheet",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Spreadsheet filled in from the template (.xlsx)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ImportResult"
+                        }
+                    },
+                    "400": {
+                        "description": "file missing, too big or not a valid spreadsheet",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "authentication required",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "422": {
+                        "description": "the spreadsheet has errors; nothing was saved",
+                        "schema": {
+                            "$ref": "#/definitions/ImportResult"
+                        }
+                    }
+                }
+            }
+        },
+        "/imports/preview": {
+            "post": {
+                "description": "Reads the file, validates every row and runs the import inside a transaction that is rolled back. The counts are real; the database is untouched.",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "imports"
+                ],
+                "summary": "Check a spreadsheet without saving anything",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Spreadsheet filled in from the template (.xlsx)",
+                        "name": "file",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/ImportResult"
+                        }
+                    },
+                    "400": {
+                        "description": "file missing, too big or not a valid spreadsheet",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "401": {
+                        "description": "authentication required",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/imports/template": {
+            "get": {
+                "description": ".xlsx with the \"remedios\" and \"embalagens\" sheets, an example row and a sheet explaining every column.",
+                "produces": [
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                ],
+                "tags": [
+                    "imports"
+                ],
+                "summary": "Download the spreadsheet template",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "authentication required",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/packages": {
             "get": {
                 "produces": [
@@ -1404,6 +1524,46 @@ const docTemplate = `{
                 }
             }
         },
+        "ImportCounts": {
+            "type": "object",
+            "properties": {
+                "created": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "updated": {
+                    "type": "integer",
+                    "example": 3
+                }
+            }
+        },
+        "ImportResult": {
+            "type": "object",
+            "properties": {
+                "applied": {
+                    "description": "Applied is false on a preview and on anything that failed: nothing was written.",
+                    "type": "boolean"
+                },
+                "drugs": {
+                    "$ref": "#/definitions/ImportCounts"
+                },
+                "eans": {
+                    "$ref": "#/definitions/ImportCounts"
+                },
+                "errors": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/RowError"
+                    }
+                },
+                "packages": {
+                    "$ref": "#/definitions/ImportCounts"
+                },
+                "summaries": {
+                    "$ref": "#/definitions/ImportCounts"
+                }
+            }
+        },
         "ListDrugsRow": {
             "type": "object",
             "properties": {
@@ -1539,6 +1699,27 @@ const docTemplate = `{
                 "RoleReviewer",
                 "RoleAdmin"
             ]
+        },
+        "RowError": {
+            "type": "object",
+            "properties": {
+                "column": {
+                    "type": "string",
+                    "example": "ean_1"
+                },
+                "line": {
+                    "type": "integer",
+                    "example": 7
+                },
+                "message": {
+                    "type": "string",
+                    "example": "must have 8 to 13 digits"
+                },
+                "sheet": {
+                    "type": "string",
+                    "example": "embalagens"
+                }
+            }
         },
         "User": {
             "type": "object",

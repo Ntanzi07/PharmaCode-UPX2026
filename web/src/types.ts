@@ -110,3 +110,18 @@ export type UserRow = User & { active: boolean; created_at: string | null; updat
 
 export type UserCreate = { name: string; email: string; password: string; role: Role }
 export type UserUpdate = { name: string; email: string; role: Role; active: boolean }
+
+// ---------- spreadsheet import ----------
+export type ImportCounts = { created: number; updated: number }
+
+export type ImportRowError = { sheet: string; line: number; column: string; message: string }
+
+export type ImportResult = {
+  /** false on a preview and whenever something failed: nothing was saved */
+  applied: boolean
+  drugs: ImportCounts
+  packages: ImportCounts
+  eans: ImportCounts
+  summaries: ImportCounts
+  errors: ImportRowError[]
+}

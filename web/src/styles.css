@@ -273,3 +273,19 @@ tr.inactive td:not(.actions) { opacity: .55; }
 @media (max-width: 720px) {
   .user-name { display: none; }
 }
+
+/* ---------- spreadsheet import ---------- */
+.card.pad { padding: 20px 24px; }
+.steps { margin: 0 0 12px; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
+.upload {
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+  margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+.upload input[type="file"] { width: auto; flex: 1 1 260px; padding: 6px; }
+a.button {
+  display: inline-block; text-decoration: none; font: inherit; font-weight: 600;
+  padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text);
+}
+a.button:hover { background: var(--bg); }
+.card.errors { margin-top: 12px; max-height: 420px; overflow-y: auto; }

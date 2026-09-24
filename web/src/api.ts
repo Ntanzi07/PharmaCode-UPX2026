@@ -1,6 +1,6 @@
 import type {
   Drug, DrugInput, EanSummary, Package, PackageCreate, PackageUpdate,
-  Page, Summary, SummaryInput, SummaryListItem, User, UserCreate, UserRow, UserUpdate,
+  ImportResult, Page, Summary, SummaryInput, SummaryListItem, User, UserCreate, UserRow, UserUpdate,
 } from './types'
 
 const BASE = '/api'
@@ -67,12 +67,33 @@ export const api = {
     changePassword: (current_password: string, new_password: string) =>
       request<void>('PUT', '/auth/password', { current_password, new_password }),
   },
+  imports: {
+    /** direct link: the browser downloads it with the session cookie */
+    templateUrl: BASE + '/imports/template',
+    preview: (file: File) => uploadSpreadsheet('/imports/preview', file),
+    apply: (file: File) => uploadSpreadsheet('/imports/apply', file),
+  },
   users: {
     list: () => request<UserRow[]>('GET', '/users'),
     create: (u: UserCreate) => request<{ id: number }>('POST', '/users', u),
     update: (id: number, u: UserUpdate) => request<void>('PUT', `/users/${id}`, u),
     setPassword: (id: number, password: string) => request<void>('PUT', `/users/${id}/password`, { password }),
   },
+}
+
+/**
+ * Sends the spreadsheet as multipart/form-data. A 422 is not an exception here:
+ * it is the API saying the file has errors, and the body is the same result
+ * object, with the list of what to fix.
+ */
+async function uploadSpreadsheet(path: string, file: File): Promise<ImportResult> {
+  const body = new FormData()
+  body.append('file', file)
+  const res = await fetch(BASE + path, { method: 'POST', body })
+  if (res.ok || res.status === 422) return (await res.json()) as ImportResult
+  const text = (await res.text()).trim()
+  if (res.status === 401) window.dispatchEvent(new Event(SESSION_EXPIRED))
+  throw new ApiError(res.status, text || `Erro ${res.status}`)
 }
 
 /** Fetches every drug (the API caps pages at 100) to fill pickers. */
