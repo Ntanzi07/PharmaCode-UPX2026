@@ -19,7 +19,6 @@ type Drug struct {
 	ID                 int64              `json:"id"`
 	RegistrationNumber string             `json:"registration_number"`
 	BrandName          pgtype.Text        `json:"brand_name"`
-	ActiveIngredient   string             `json:"active_ingredient"`
 	Manufacturer       string             `json:"manufacturer"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
@@ -29,6 +28,17 @@ type DrugIngredient struct {
 	DrugID       int64              `json:"drug_id"`
 	IngredientID int64              `json:"ingredient_id"`
 	CreatedAt    pgtype.Timestamptz `json:"created_at"`
+}
+
+type IngredientInteraction struct {
+	IngredientAID  int64              `json:"ingredient_a_id"`
+	IngredientBID  int64              `json:"ingredient_b_id"`
+	Severity       string             `json:"severity"`
+	Description    string             `json:"description"`
+	Recommendation pgtype.Text        `json:"recommendation"`
+	SourceUrl      string             `json:"source_url"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt      pgtype.Timestamptz `json:"updated_at"`
 }
 
 type Package struct {

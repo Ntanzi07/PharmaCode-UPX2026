@@ -8,6 +8,7 @@ const STEPS = [
   ['packages', 'Embalagens'],
   ['eans', 'EANs'],
   ['summaries', 'Bulas'],
+  ['interactions', 'Regras de interação'],
 ] as const
 
 export default function ImportPage() {
@@ -52,7 +53,7 @@ export default function ImportPage() {
 
       <div className="card pad">
         <ol className="steps">
-          <li>Baixe o modelo e preencha as abas <strong>remedios</strong> e <strong>embalagens</strong>. A aba <strong>instrucoes</strong> explica cada coluna.</li>
+          <li>Baixe o modelo e preencha as abas <strong>remedios</strong> e <strong>embalagens</strong>. A aba <strong>interacoes_ativos</strong> é opcional e cadastra as regras de interação. A aba <strong>instrucoes</strong> explica cada coluna.</li>
           <li>Suba o arquivo e clique em <strong>Conferir</strong>: nada é gravado, você só vê o que seria criado e os erros.</li>
           <li>Se estiver tudo certo, clique em <strong>Importar</strong>.</li>
         </ol>

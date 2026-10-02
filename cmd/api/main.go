@@ -42,7 +42,7 @@ func main() {
 
 	queries := db.New(pool)
 
-	drugSvc := service.NewDrugService(queries)
+	drugSvc := service.NewDrugService(queries, service.NewPoolDrugTx(pool))
 	packageSvc := service.NewPackageService(queries)
 	summarySvc := service.NewSummaryService(queries)
 	userSvc := service.NewUserService(queries)
@@ -55,12 +55,13 @@ func main() {
 	limiter := auth.NewLoginLimiter(5, 15*time.Minute)
 
 	r := router.New(router.Handlers{
-		Drug:    handler.NewDrugHandler(drugSvc),
-		Package: handler.NewPackageHandler(packageSvc),
-		Summary: handler.NewSummaryHandler(summarySvc),
-		Auth:    handler.NewAuthHandler(authSvc, userSvc, limiter, cfg.CookieSecure),
-		User:    handler.NewUserHandler(userSvc),
-		Import:  handler.NewImportHandler(importSvc),
+		Drug:        handler.NewDrugHandler(drugSvc),
+		Package:     handler.NewPackageHandler(packageSvc),
+		Summary:     handler.NewSummaryHandler(summarySvc),
+		Auth:        handler.NewAuthHandler(authSvc, userSvc, limiter, cfg.CookieSecure),
+		User:        handler.NewUserHandler(userSvc),
+		Import:      handler.NewImportHandler(importSvc),
+		Interaction: handler.NewInteractionHandler(drugSvc),
 	}, auth.NewMiddleware(authSvc))
 
 	log.Printf("server listening on :%s", cfg.Port)

@@ -26,20 +26,18 @@ func (q *Queries) GetDrugIDByRegistration(ctx context.Context, registrationNumbe
 
 const upsertDrug = `-- name: UpsertDrug :one
 
-INSERT INTO drugs (registration_number, brand_name, active_ingredient, manufacturer)
-VALUES ($1, $2, $3, $4)
+INSERT INTO drugs (registration_number, brand_name, manufacturer)
+VALUES ($1, $2, $3)
 ON CONFLICT (registration_number)
-    DO UPDATE SET brand_name        = EXCLUDED.brand_name,
-                  active_ingredient = EXCLUDED.active_ingredient,
-                  manufacturer      = EXCLUDED.manufacturer,
-                  updated_at        = NOW()
+    DO UPDATE SET brand_name   = EXCLUDED.brand_name,
+                  manufacturer = EXCLUDED.manufacturer,
+                  updated_at   = NOW()
 RETURNING id, (xmax = 0) AS created
 `
 
 type UpsertDrugParams struct {
 	RegistrationNumber string      `json:"registration_number"`
 	BrandName          pgtype.Text `json:"brand_name"`
-	ActiveIngredient   string      `json:"active_ingredient"`
 	Manufacturer       string      `json:"manufacturer"`
 }
 
@@ -53,12 +51,7 @@ type UpsertDrugRow struct {
 // file twice updates the rows instead of duplicating them.
 // "(xmax = 0) AS created" is the Postgres trick to tell an INSERT from an UPDATE.
 func (q *Queries) UpsertDrug(ctx context.Context, arg UpsertDrugParams) (UpsertDrugRow, error) {
-	row := q.db.QueryRow(ctx, upsertDrug,
-		arg.RegistrationNumber,
-		arg.BrandName,
-		arg.ActiveIngredient,
-		arg.Manufacturer,
-	)
+	row := q.db.QueryRow(ctx, upsertDrug, arg.RegistrationNumber, arg.BrandName, arg.Manufacturer)
 	var i UpsertDrugRow
 	err := row.Scan(&i.ID, &i.Created)
 	return i, err

@@ -1,5 +1,17 @@
 basePath: /
 definitions:
+  DrugRef:
+    properties:
+      brand_name:
+        example: Advil 12h
+        type: string
+      drug_id:
+        example: 1
+        type: integer
+      ean:
+        example: "7896015592752"
+        type: string
+    type: object
   GetPackageByIdRow:
     properties:
       description:
@@ -60,8 +72,10 @@ definitions:
     type: object
   GetSummaryByEANRow:
     properties:
-      active_ingredient:
-        type: string
+      active_ingredients:
+        items:
+          type: string
+        type: array
       adverse_effects:
         type: string
       brand_name:
@@ -167,15 +181,95 @@ definitions:
         items:
           $ref: '#/definitions/RowError'
         type: array
+      interactions:
+        $ref: '#/definitions/ImportCounts'
       packages:
         $ref: '#/definitions/ImportCounts'
       summaries:
         $ref: '#/definitions/ImportCounts'
     type: object
+  InteractionDrug:
+    properties:
+      active_ingredients:
+        example:
+        - ibuprofeno
+        items:
+          type: string
+        type: array
+      brand_name:
+        example: Advil 12h
+        type: string
+      drug_id:
+        example: 1
+        type: integer
+      ean:
+        example: "7896015592752"
+        type: string
+      manufacturer:
+        example: Pfizer
+        type: string
+    type: object
+  InteractionFinding:
+    properties:
+      description:
+        type: string
+      drug_a:
+        $ref: '#/definitions/DrugRef'
+      drug_b:
+        $ref: '#/definitions/DrugRef'
+      ingredient_a:
+        example: ibuprofeno
+        type: string
+      ingredient_b:
+        example: varfarina
+        type: string
+      recommendation:
+        type: string
+      severity:
+        enum:
+        - grave
+        - moderada
+        - leve
+        example: grave
+        type: string
+      source_url:
+        type: string
+    type: object
+  InteractionReport:
+    properties:
+      drugs:
+        items:
+          $ref: '#/definitions/InteractionDrug'
+        type: array
+      findings:
+        items:
+          $ref: '#/definitions/InteractionFinding'
+        type: array
+      not_found:
+        description: |-
+          NotFound: barcodes that are not registered. They are reported instead of
+          failing the whole request, so one unknown box doesn't break the app.
+        items:
+          type: string
+        type: array
+      worst_severity:
+        description: |-
+          Severity of the worst finding ("grave", "moderada", "leve"), or empty
+          when nothing was found: it is what the app colours the screen by.
+        enum:
+        - grave
+        - moderada
+        - leve
+        - ""
+        example: grave
+        type: string
+    type: object
   ListDrugsRow:
     properties:
-      active_ingredient:
-        type: string
+      active_ingredients:
+        items:
+          type: string
+        type: array
       brand_name:
         type: string
       id:
@@ -183,6 +277,27 @@ definitions:
       manufacturer:
         type: string
       registration_number:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  ListIngredientInteractionsRow:
+    properties:
+      description:
+        type: string
+      ingredient_a:
+        type: string
+      ingredient_a_id:
+        type: integer
+      ingredient_b:
+        type: string
+      ingredient_b_id:
+        type: integer
+      recommendation:
+        type: string
+      severity:
+        type: string
+      source_url:
         type: string
       updated_at:
         type: string
@@ -206,8 +321,10 @@ definitions:
     type: object
   ListSummariesRow:
     properties:
-      active_ingredient:
-        type: string
+      active_ingredients:
+        items:
+          type: string
+        type: array
       brand_name:
         type: string
       drug_id:
@@ -304,13 +421,24 @@ definitions:
     type: object
   createDrugRequest:
     properties:
-      active_ingredient:
-        type: string
+      active_ingredients:
+        description: |-
+          One entry per active ingredient: a combination drug such as Neosaldina
+          has three. Names are matched ignoring case and accents.
+        example:
+        - dipirona sódica
+        - cafeína
+        items:
+          type: string
+        type: array
       brand_name:
+        example: Advil 12h
         type: string
       manufacturer:
+        example: Pfizer
         type: string
       registration_number:
+        example: "192900007"
         type: string
     type: object
   createPackageRequest:
@@ -394,6 +522,41 @@ definitions:
       id:
         example: 1
         type: integer
+    type: object
+  interactionRequest:
+    properties:
+      eans:
+        example:
+        - "7896015592752"
+        - "7891058001155"
+        items:
+          type: string
+        type: array
+    type: object
+  interactionRuleRequest:
+    properties:
+      description:
+        example: Juntos aumentam o risco de sangramento.
+        type: string
+      ingredient_a:
+        example: ibuprofeno
+        type: string
+      ingredient_b:
+        example: varfarina
+        type: string
+      recommendation:
+        example: Não use junto sem orientação médica.
+        type: string
+      severity:
+        enum:
+        - grave
+        - moderada
+        - leve
+        example: grave
+        type: string
+      source_url:
+        example: https://consultas.anvisa.gov.br/#/bulario/
+        type: string
     type: object
   listResponse:
     properties:
@@ -837,6 +1000,135 @@ paths:
       summary: Download the spreadsheet template
       tags:
       - imports
+  /interaction-rules:
+    get:
+      parameters:
+      - description: Items per page (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      - description: How many items to skip (default 0)
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/listResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/ListIngredientInteractionsRow'
+                  type: array
+              type: object
+        "401":
+          description: authentication required
+          schema:
+            type: string
+      summary: List the registered interaction rules
+      tags:
+      - interactions
+    put:
+      consumes:
+      - application/json
+      description: The pair is identified by the two ingredient names, in any order.
+        An ingredient that does not exist yet is created. Sending the same pair again
+        updates the rule.
+      parameters:
+      - description: Interaction rule
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/interactionRuleRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: rule updated
+          schema:
+            type: string
+        "201":
+          description: rule created
+          schema:
+            type: string
+        "400":
+          description: invalid data
+          schema:
+            type: string
+        "403":
+          description: insufficient permissions
+          schema:
+            type: string
+      summary: Create or update the rule of a pair (pharmacist)
+      tags:
+      - interactions
+  /interaction-rules/{ingredientA}/{ingredientB}:
+    delete:
+      parameters:
+      - description: Id of one of the ingredients
+        in: path
+        name: ingredientA
+        required: true
+        type: integer
+      - description: Id of the other ingredient
+        in: path
+        name: ingredientB
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: invalid id
+          schema:
+            type: string
+        "404":
+          description: interaction rule not found
+          schema:
+            type: string
+      summary: Delete the rule of a pair (pharmacist)
+      tags:
+      - interactions
+  /interactions:
+    post:
+      consumes:
+      - application/json
+      description: 'Public route used by the app: send the barcodes the person scanned
+        and it compares every pair of active ingredients coming from different boxes
+        against the registered rules. Unknown barcodes come back in "not_found" instead
+        of failing the request. An empty "findings" means no rule is registered for
+        those pairs, not that the combination is safe.'
+      parameters:
+      - description: Scanned barcodes (2 to 10)
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/interactionRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/InteractionReport'
+        "400":
+          description: invalid json / fewer than 2 or more than 10 barcodes / malformed
+            barcode
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Check interactions between the scanned boxes
+      tags:
+      - interactions
   /packages:
     get:
       parameters:

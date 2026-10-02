@@ -13,6 +13,20 @@ type DrugQuerier interface {
 	ListDrugs(ctx context.Context, arg db.ListDrugsParams) ([]db.ListDrugsRow, error)
 	GetDrugByEAN(ctx context.Context, ean string) (db.GetDrugByEANRow, error)
 	GetSummaryByEAN(ctx context.Context, ean string) (db.GetSummaryByEANRow, error)
+
+	// Active ingredients live in their own tables (see migration 000008).
+	UpsertIngredient(ctx context.Context, name string) (int64, error)
+	LinkDrugIngredient(ctx context.Context, arg db.LinkDrugIngredientParams) error
+	DeleteDrugIngredientsNotIn(ctx context.Context, arg db.DeleteDrugIngredientsNotInParams) error
+	ListIngredientsByDrugID(ctx context.Context, drugID int64) ([]db.ListIngredientsByDrugIDRow, error)
+	ListDrugsByEANs(ctx context.Context, eans []string) ([]db.ListDrugsByEANsRow, error)
+
+	// Interaction rules between two active ingredients
+	UpsertIngredientInteraction(ctx context.Context, arg db.UpsertIngredientInteractionParams) (db.UpsertIngredientInteractionRow, error)
+	DeleteIngredientInteraction(ctx context.Context, arg db.DeleteIngredientInteractionParams) (int64, error)
+	ListIngredientInteractions(ctx context.Context, arg db.ListIngredientInteractionsParams) ([]db.ListIngredientInteractionsRow, error)
+	CountIngredientInteractions(ctx context.Context) (int64, error)
+	FindInteractionsBetweenEANs(ctx context.Context, eans []string) ([]db.FindInteractionsBetweenEANsRow, error)
 }
 
 type PackageQuerier interface {

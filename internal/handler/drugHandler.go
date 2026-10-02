@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/db"
 	"github.com/Ntanzi07/PharmaCode-UPX2026/internal/service"
@@ -20,10 +21,52 @@ func NewDrugHandler(s *service.DrugService) *DrugHandler {
 }
 
 type createDrugRequest struct {
-	RegistrationNumber string `json:"registration_number"`
-	BrandName          string `json:"brand_name"`
-	ActiveIngredient   string `json:"active_ingredient"`
-	Manufacturer       string `json:"manufacturer"`
+	RegistrationNumber string `json:"registration_number" example:"192900007"`
+	BrandName          string `json:"brand_name" example:"Advil 12h"`
+	// One entry per active ingredient: a combination drug such as Neosaldina
+	// has three. Names are matched ignoring case and accents.
+	ActiveIngredients []string `json:"active_ingredients" example:"dipirona sódica,cafeína"`
+	Manufacturer      string   `json:"manufacturer" example:"Pfizer"`
+}
+
+// normalizeIngredients trims the names, drops the empty ones and removes
+// repetitions that differ only in case, accents or spacing.
+func normalizeIngredients(raw []string) []string {
+	seen := make(map[string]bool, len(raw))
+	out := make([]string, 0, len(raw))
+	for _, name := range raw {
+		name = strings.Join(strings.Fields(name), " ")
+		if name == "" {
+			continue
+		}
+		key := strings.ToLower(removeAccents(name))
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		out = append(out, name)
+	}
+	return out
+}
+
+var ingredientAccents = map[rune]rune{
+	'á': 'a', 'à': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a',
+	'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+	'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+	'ó': 'o', 'ò': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o',
+	'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+	'ç': 'c', 'ñ': 'n',
+}
+
+func removeAccents(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		if plain, ok := ingredientAccents[r]; ok {
+			r = plain
+		}
+		b.WriteRune(r)
+	}
+	return b.String()
 }
 
 // idResponse documents the {"id": 123} body returned by create endpoints.
@@ -37,12 +80,13 @@ type listResponse struct {
 	Offset int32 `json:"offset"`
 }
 
-func drugRequestVerification(req createDrugRequest) (error error) {
+func drugRequestVerification(req *createDrugRequest) error {
 	if req.RegistrationNumber == "" {
 		return errors.New("registration number is required")
 	}
-	if req.ActiveIngredient == "" {
-		return errors.New("active ingredient is required")
+	req.ActiveIngredients = normalizeIngredients(req.ActiveIngredients)
+	if len(req.ActiveIngredients) == 0 {
+		return errors.New("at least one active ingredient is required")
 	}
 	if req.Manufacturer == "" {
 		return errors.New("manufacturer is required")
@@ -104,7 +148,7 @@ func (h *DrugHandler) CreateDrug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := drugRequestVerification(req)
+	err := drugRequestVerification(&req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -157,7 +201,7 @@ func (h *DrugHandler) UpdateDrug(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid json", http.StatusBadRequest)
 		return
 	}
-	err = drugRequestVerification(req)
+	err = drugRequestVerification(&req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return

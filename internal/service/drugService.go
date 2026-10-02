@@ -13,62 +13,96 @@ import (
 
 type DrugService struct {
 	queries DrugQuerier
+	tx      DrugTx
 }
 
-func NewDrugService(q DrugQuerier) *DrugService {
-	return &DrugService{queries: q}
+func NewDrugService(q DrugQuerier, tx DrugTx) *DrugService {
+	return &DrugService{queries: q, tx: tx}
 }
 
 type CreateDrugInput struct {
 	RegistrationNumber string
 	BrandName          string
-	ActiveIngredient   string
-	Manufacturer       string
+	// ActiveIngredients: one entry per ingredient. A combination drug such as
+	// Neosaldina has three.
+	ActiveIngredients []string
+	Manufacturer      string
 }
 
 func (s *DrugService) CreateDrugService(ctx context.Context, in CreateDrugInput) (int64, error) {
-	id, err := s.queries.CreateDrug(ctx, db.CreateDrugParams{
-		RegistrationNumber: in.RegistrationNumber,
-		BrandName: pgtype.Text{
-			String: in.BrandName,
-			Valid:  in.BrandName != "",
-		},
-		ActiveIngredient: in.ActiveIngredient,
-		Manufacturer:     in.Manufacturer,
+	var id int64
+	err := s.tx.Run(ctx, func(q DrugQuerier) error {
+		var err error
+		id, err = q.CreateDrug(ctx, db.CreateDrugParams{
+			RegistrationNumber: in.RegistrationNumber,
+			BrandName: pgtype.Text{
+				String: in.BrandName,
+				Valid:  in.BrandName != "",
+			},
+			Manufacturer: in.Manufacturer,
+		})
+		if err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				return ErrDuplicateRegistration
+			}
+			return err
+		}
+		return syncIngredients(ctx, q, id, in.ActiveIngredients)
 	})
 	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return 0, ErrDuplicateRegistration
-		}
 		return 0, err
 	}
-
 	return id, nil
 }
 
-func (s *DrugService) UpdateDrugService(ctx context.Context, id int64, in CreateDrugInput) error {
-	rows, err := s.queries.UpdateDrug(ctx, db.UpdateDrugParams{
-		ID:                 id,
-		RegistrationNumber: in.RegistrationNumber,
-		BrandName: pgtype.Text{
-			String: in.BrandName,
-			Valid:  in.BrandName != "",
-		},
-		ActiveIngredient: in.ActiveIngredient,
-		Manufacturer:     in.Manufacturer,
-	})
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			return ErrDuplicateRegistration
+// syncIngredients makes the drug's links match the list that came in: every
+// ingredient is created (or found) by its normalized name, linked, and the
+// links that are no longer in the list are removed.
+func syncIngredients(ctx context.Context, q DrugQuerier, drugID int64, names []string) error {
+	ids := make([]int64, 0, len(names))
+	for _, name := range names {
+		ingredientID, err := q.UpsertIngredient(ctx, name)
+		if err != nil {
+			return err
 		}
-		return err
+		if err := q.LinkDrugIngredient(ctx, db.LinkDrugIngredientParams{
+			DrugID:       drugID,
+			IngredientID: ingredientID,
+		}); err != nil {
+			return err
+		}
+		ids = append(ids, ingredientID)
 	}
-	if rows == 0 {
-		return ErrDrugNotFound
-	}
-	return nil
+	return q.DeleteDrugIngredientsNotIn(ctx, db.DeleteDrugIngredientsNotInParams{
+		DrugID:        drugID,
+		IngredientIds: ids,
+	})
+}
+
+func (s *DrugService) UpdateDrugService(ctx context.Context, id int64, in CreateDrugInput) error {
+	return s.tx.Run(ctx, func(q DrugQuerier) error {
+		rows, err := q.UpdateDrug(ctx, db.UpdateDrugParams{
+			ID:                 id,
+			RegistrationNumber: in.RegistrationNumber,
+			BrandName: pgtype.Text{
+				String: in.BrandName,
+				Valid:  in.BrandName != "",
+			},
+			Manufacturer: in.Manufacturer,
+		})
+		if err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+				return ErrDuplicateRegistration
+			}
+			return err
+		}
+		if rows == 0 {
+			return ErrDrugNotFound
+		}
+		return syncIngredients(ctx, q, id, in.ActiveIngredients)
+	})
 }
 
 func (s *DrugService) DeleteDrugService(ctx context.Context, id int64) error {
@@ -87,6 +121,11 @@ func (s *DrugService) ListDrugsService(ctx context.Context, limit, offset int32)
 		Limit:  limit,
 		Offset: offset,
 	})
+}
+
+// ListIngredients returns the active ingredients of one drug.
+func (s *DrugService) ListIngredients(ctx context.Context, drugID int64) ([]db.ListIngredientsByDrugIDRow, error) {
+	return s.queries.ListIngredientsByDrugID(ctx, drugID)
 }
 
 func (s *DrugService) GetSummaryByEANService(ctx context.Context, ean string) (db.GetSummaryByEANRow, error) {

@@ -19,4 +19,10 @@ var (
 	ErrInvalidRole     = errors.New("role must be editor, reviewer or admin")
 	ErrLastAdmin       = errors.New("cannot remove the last active admin")
 	ErrWrongPassword   = errors.New("current password is wrong")
+
+	ErrInvalidSeverity          = errors.New("severity must be grave, moderada or leve")
+	ErrInvalidIngredientPair    = errors.New("an interaction needs two different active ingredients")
+	ErrInvalidInteractionText   = errors.New("description is required")
+	ErrInvalidInteractionSource = errors.New("source_url is required")
+	ErrInteractionRuleNotFound  = errors.New("interaction rule not found")
 )

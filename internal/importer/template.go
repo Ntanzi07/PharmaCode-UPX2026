@@ -45,11 +45,20 @@ func BuildTemplate() ([]byte, error) {
 		{"192900007", "1929000070034", "600 mg, caixa com 10", "7896015592752", "", ""},
 		{"192900007", "1929000070069", "600 mg, caixa com 20", "7896015592769", "", ""},
 	}
+	interactionExamples := [][]string{{
+		"ibuprofeno", "varfarina", "grave",
+		"Juntos aumentam o risco de sangramento.",
+		"Nao use os dois juntos sem orientacao medica.",
+		"https://consultas.anvisa.gov.br/#/bulario/q/?numeroRegistro=192900007",
+	}}
 
 	if err := writeSheet(f, SheetDrugs, DrugColumns, [][]string{drugExample}, header); err != nil {
 		return nil, err
 	}
 	if err := writeSheet(f, SheetPackages, PackageColumns, packageExamples, header); err != nil {
+		return nil, err
+	}
+	if err := writeSheet(f, SheetInteractions, InteractionColumns, interactionExamples, header); err != nil {
 		return nil, err
 	}
 	if err := writeInstructions(f, header); err != nil {
@@ -89,6 +98,12 @@ func writeSheet(f *excelize.File, name string, cols []column, examples [][]strin
 		width := 22.0
 		if !c.Required && i > 3 {
 			width = 34 // leaflet texts are long
+		}
+		switch c.Name {
+		case "descricao", "recomendacao", "fonte_url":
+			if name == SheetInteractions {
+				width = 42 // the rule is written out in full here
+			}
 		}
 		if err := f.SetColWidth(name, col, col, width); err != nil {
 			return err
@@ -139,12 +154,17 @@ func writeInstructions(f *excelize.File, headerStyle int) error {
 	for _, c := range PackageColumns {
 		rows = append(rows, []string{SheetPackages, c.Name, req(c.Required), c.Help})
 	}
+	for _, c := range InteractionColumns {
+		rows = append(rows, []string{SheetInteractions, c.Name, req(c.Required), c.Help})
+	}
 	rows = append(rows,
 		[]string{"", "", "", ""},
 		[]string{"regra", "linha de exemplo", "", "As linhas de exemplo podem ser apagadas antes de importar."},
 		[]string{"regra", "bula", "", "A bula fica na aba remedios. Se preencher qualquer campo dela, para_que_serve, posologia e fonte_url passam a ser obrigatorios."},
 		[]string{"regra", "revisao", "", "Bula importada entra como NAO revisada: um farmaceutico precisa revisar no painel para ela aparecer no app."},
 		[]string{"regra", "repetidos", "", "Importar o mesmo arquivo de novo atualiza os registros existentes, nao duplica."},
+		[]string{"regra", "interacoes_ativos", "", "Aba opcional: cadastra as regras de interacao entre dois principios ativos, independente dos remedios das outras abas. O par nao tem ordem: a,b e b,a sao a mesma regra."},
+		[]string{"regra", "interacoes_ativos", "", "Principio ativo que ainda nao existe no banco e criado automaticamente, com o nome escrito aqui."},
 	)
 	for r, row := range rows {
 		for i, value := range row {

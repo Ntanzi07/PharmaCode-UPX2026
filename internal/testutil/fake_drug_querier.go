@@ -3,7 +3,9 @@ package testutil
 import (
 	"context"
 	"sort"
+	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,6 +20,15 @@ type FakeDrugQuerier struct {
 
 	eans              map[string]int64
 	reviewedSummaries map[int64]string
+
+	// Active ingredients, as in the real tables: one row per name (by
+	// normalized name) and the links drug -> ingredient.
+	ingredients map[string]int64 // normalized name -> id
+	names       map[int64]string // id -> name as written
+	links       map[int64][]int64
+	rules       map[[2]int64]fakeRule
+
+	LastIngredientNames []string
 
 	CreateErr error
 	UpdateErr error
@@ -39,6 +50,10 @@ func NewFakeDrugQuerier() *FakeDrugQuerier {
 		drugs:             make(map[int64]db.ListDrugsRow),
 		eans:              make(map[string]int64),
 		reviewedSummaries: make(map[int64]string),
+		ingredients:       make(map[string]int64),
+		names:             make(map[int64]string),
+		links:             make(map[int64][]int64),
+		rules:             make(map[[2]int64]fakeRule),
 	}
 }
 
@@ -90,7 +105,6 @@ func (f *FakeDrugQuerier) CreateDrug(ctx context.Context, arg db.CreateDrugParam
 		ID:                 id,
 		RegistrationNumber: arg.RegistrationNumber,
 		BrandName:          arg.BrandName,
-		ActiveIngredient:   arg.ActiveIngredient,
 		Manufacturer:       arg.Manufacturer,
 	}
 	return id, nil
@@ -119,7 +133,6 @@ func (f *FakeDrugQuerier) UpdateDrug(ctx context.Context, arg db.UpdateDrugParam
 
 	row.RegistrationNumber = arg.RegistrationNumber
 	row.BrandName = arg.BrandName
-	row.ActiveIngredient = arg.ActiveIngredient
 	row.Manufacturer = arg.Manufacturer
 	f.drugs[arg.ID] = row
 
@@ -158,7 +171,9 @@ func (f *FakeDrugQuerier) ListDrugs(ctx context.Context, arg db.ListDrugsParams)
 
 	var out []db.ListDrugsRow
 	for _, id := range ids {
-		out = append(out, f.drugs[id])
+		row := f.drugs[id]
+		row.ActiveIngredients = f.ingredientNames(id)
+		out = append(out, row)
 	}
 
 	offset := int(arg.Offset)
@@ -194,7 +209,7 @@ func (f *FakeDrugQuerier) GetDrugByEAN(ctx context.Context, ean string) (db.GetD
 		ID:                 d.ID,
 		RegistrationNumber: d.RegistrationNumber,
 		BrandName:          d.BrandName,
-		ActiveIngredient:   d.ActiveIngredient,
+		ActiveIngredients:  f.ingredientNames(d.ID),
 		Manufacturer:       d.Manufacturer,
 	}, nil
 }
@@ -221,7 +236,7 @@ func (f *FakeDrugQuerier) GetSummaryByEAN(ctx context.Context, ean string) (db.G
 		Description:        "Caixa com 20 comprimidos",
 		RegistrationNumber: d.RegistrationNumber,
 		BrandName:          d.BrandName,
-		ActiveIngredient:   d.ActiveIngredient,
+		ActiveIngredients:  f.ingredientNames(d.ID),
 		Manufacturer:       d.Manufacturer,
 	}
 	if what, ok := f.reviewedSummaries[drugID]; ok {
@@ -230,4 +245,273 @@ func (f *FakeDrugQuerier) GetSummaryByEAN(ctx context.Context, ean string) (db.G
 		row.SourceUrl = pgtype.Text{String: "https://consultas.anvisa.gov.br/bula/1", Valid: true}
 	}
 	return row, nil
+}
+
+// ---- active ingredients ----
+
+// normalizeIngredient mimics the normalize_ingredient_name function of the
+// database: lowercase, no accents, single spaces.
+func normalizeIngredient(name string) string {
+	var b strings.Builder
+	lastSpace := false
+	for _, r := range strings.ToLower(strings.TrimSpace(name)) {
+		if plain, ok := accents[r]; ok {
+			r = plain
+		}
+		if unicode.IsSpace(r) {
+			if !lastSpace {
+				b.WriteRune(' ')
+			}
+			lastSpace = true
+			continue
+		}
+		lastSpace = false
+		b.WriteRune(r)
+	}
+	return b.String()
+}
+
+var accents = map[rune]rune{
+	'á': 'a', 'à': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a',
+	'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+	'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+	'ó': 'o', 'ò': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o',
+	'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+	'ç': 'c', 'ñ': 'n',
+}
+
+// ingredientNames returns the names linked to a drug, sorted like the database does.
+func (f *FakeDrugQuerier) ingredientNames(drugID int64) []string {
+	out := []string{}
+	for _, id := range f.links[drugID] {
+		out = append(out, f.names[id])
+	}
+	sort.Strings(out)
+	return out
+}
+
+// Ingredients is a helper for the asserts: the ingredients of a drug.
+func (f *FakeDrugQuerier) Ingredients(drugID int64) []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.ingredientNames(drugID)
+}
+
+func (f *FakeDrugQuerier) UpsertIngredient(ctx context.Context, name string) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	f.LastIngredientNames = append(f.LastIngredientNames, name)
+	key := normalizeIngredient(name)
+	if id, ok := f.ingredients[key]; ok {
+		return id, nil
+	}
+	id := f.nextID
+	f.nextID++
+	f.ingredients[key] = id
+	f.names[id] = strings.TrimSpace(name)
+	return id, nil
+}
+
+func (f *FakeDrugQuerier) LinkDrugIngredient(ctx context.Context, arg db.LinkDrugIngredientParams) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	for _, id := range f.links[arg.DrugID] {
+		if id == arg.IngredientID {
+			return nil
+		}
+	}
+	f.links[arg.DrugID] = append(f.links[arg.DrugID], arg.IngredientID)
+	return nil
+}
+
+func (f *FakeDrugQuerier) DeleteDrugIngredientsNotIn(ctx context.Context, arg db.DeleteDrugIngredientsNotInParams) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	kept := f.links[arg.DrugID][:0]
+	for _, id := range f.links[arg.DrugID] {
+		for _, keep := range arg.IngredientIds {
+			if id == keep {
+				kept = append(kept, id)
+				break
+			}
+		}
+	}
+	f.links[arg.DrugID] = kept
+	return nil
+}
+
+func (f *FakeDrugQuerier) ListIngredientsByDrugID(ctx context.Context, drugID int64) ([]db.ListIngredientsByDrugIDRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	var out []db.ListIngredientsByDrugIDRow
+	for _, id := range f.links[drugID] {
+		out = append(out, db.ListIngredientsByDrugIDRow{ID: id, Name: f.names[id]})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	return out, nil
+}
+
+func (f *FakeDrugQuerier) ListDrugsByEANs(ctx context.Context, eans []string) ([]db.ListDrugsByEANsRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.GetErr != nil {
+		return nil, f.GetErr
+	}
+	var out []db.ListDrugsByEANsRow
+	for _, ean := range eans {
+		drugID, ok := f.eans[ean]
+		if !ok {
+			continue
+		}
+		d, ok := f.drugs[drugID]
+		if !ok {
+			continue
+		}
+		out = append(out, db.ListDrugsByEANsRow{
+			Ean:               ean,
+			DrugID:            d.ID,
+			BrandName:         d.BrandName,
+			Manufacturer:      d.Manufacturer,
+			ActiveIngredients: f.ingredientNames(d.ID),
+		})
+	}
+	return out, nil
+}
+
+// ---- interaction rules ----
+
+type fakeRule struct {
+	aID, bID       int64
+	severity       string
+	description    string
+	recommendation string
+	sourceURL      string
+}
+
+func pairKey(a, b int64) [2]int64 {
+	if a > b {
+		a, b = b, a
+	}
+	return [2]int64{a, b}
+}
+
+func (f *FakeDrugQuerier) UpsertIngredientInteraction(ctx context.Context, arg db.UpsertIngredientInteractionParams) (db.UpsertIngredientInteractionRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.rules == nil {
+		f.rules = map[[2]int64]fakeRule{}
+	}
+	key := pairKey(arg.IngredientAID, arg.IngredientBID)
+	_, existed := f.rules[key]
+	f.rules[key] = fakeRule{
+		aID: key[0], bID: key[1], severity: arg.Severity, description: arg.Description,
+		recommendation: arg.Recommendation.String, sourceURL: arg.SourceUrl,
+	}
+	return db.UpsertIngredientInteractionRow{IngredientAID: key[0], IngredientBID: key[1], Created: !existed}, nil
+}
+
+func (f *FakeDrugQuerier) DeleteIngredientInteraction(ctx context.Context, arg db.DeleteIngredientInteractionParams) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	key := pairKey(arg.IngredientAID, arg.IngredientBID)
+	if _, ok := f.rules[key]; !ok {
+		return 0, nil
+	}
+	delete(f.rules, key)
+	return 1, nil
+}
+
+func (f *FakeDrugQuerier) ListIngredientInteractions(ctx context.Context, arg db.ListIngredientInteractionsParams) ([]db.ListIngredientInteractionsRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	var out []db.ListIngredientInteractionsRow
+	for _, r := range f.rules {
+		out = append(out, db.ListIngredientInteractionsRow{
+			IngredientAID: r.aID, IngredientA: f.names[r.aID],
+			IngredientBID: r.bID, IngredientB: f.names[r.bID],
+			Severity: r.severity, Description: r.description,
+			Recommendation: pgtype.Text{String: r.recommendation, Valid: r.recommendation != ""},
+			SourceUrl:      r.sourceURL,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].IngredientA != out[j].IngredientA {
+			return out[i].IngredientA < out[j].IngredientA
+		}
+		return out[i].IngredientB < out[j].IngredientB
+	})
+
+	offset := int(arg.Offset)
+	if offset >= len(out) {
+		return nil, nil
+	}
+	out = out[offset:]
+	if limit := int(arg.Limit); limit >= 0 && limit < len(out) {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
+func (f *FakeDrugQuerier) CountIngredientInteractions(ctx context.Context) (int64, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return int64(len(f.rules)), nil
+}
+
+// FindInteractionsBetweenEANs mirrors the real query: every pair of ingredients
+// coming from two DIFFERENT drugs is looked up in the rules.
+func (f *FakeDrugQuerier) FindInteractionsBetweenEANs(ctx context.Context, eans []string) ([]db.FindInteractionsBetweenEANsRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.GetErr != nil {
+		return nil, f.GetErr
+	}
+
+	drugIDs := []int64{}
+	seen := map[int64]bool{}
+	for _, ean := range eans {
+		if id, ok := f.eans[ean]; ok && !seen[id] {
+			seen[id] = true
+			drugIDs = append(drugIDs, id)
+		}
+	}
+	sort.Slice(drugIDs, func(i, j int) bool { return drugIDs[i] < drugIDs[j] })
+
+	var out []db.FindInteractionsBetweenEANsRow
+	for i, drugA := range drugIDs {
+		for _, drugB := range drugIDs[i+1:] {
+			for _, ingA := range f.links[drugA] {
+				for _, ingB := range f.links[drugB] {
+					rule, ok := f.rules[pairKey(ingA, ingB)]
+					if !ok || ingA == ingB {
+						continue
+					}
+					out = append(out, db.FindInteractionsBetweenEANsRow{
+						IngredientA: f.names[rule.aID],
+						IngredientB: f.names[rule.bID],
+						Severity:    rule.severity,
+						Description: rule.description,
+						Recommendation: pgtype.Text{
+							String: rule.recommendation,
+							Valid:  rule.recommendation != "",
+						},
+						SourceUrl: rule.sourceURL,
+						DrugAID:   drugA,
+						DrugBID:   drugB,
+					})
+				}
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Severity < out[j].Severity })
+	return out, nil
 }

@@ -31,8 +31,10 @@ type DrugRow struct {
 	Line               int
 	RegistrationNumber string
 	BrandName          string
-	ActiveIngredient   string
-	Manufacturer       string
+	// ActiveIngredients: the cell is split on "+" and ";", so a combination
+	// drug becomes one entry per ingredient.
+	ActiveIngredients []string
+	Manufacturer      string
 
 	// Leaflet (optional as a whole; when any field is filled the required ones must be too)
 	HasSummary         bool
@@ -61,13 +63,41 @@ type PackageRow struct {
 	Eans                     []string
 }
 
+// InteractionRow is one line of the "interacoes_ativos" sheet: one rule for a
+// pair of active ingredients.
+type InteractionRow struct {
+	Line           int
+	IngredientA    string
+	IngredientB    string
+	Severity       string
+	Description    string
+	Recommendation string
+	SourceURL      string
+}
+
 // File is a parsed spreadsheet, ready to be written to the database.
 type File struct {
-	Drugs    []DrugRow
-	Packages []PackageRow
+	Drugs        []DrugRow
+	Packages     []PackageRow
+	Interactions []InteractionRow
 }
 
 var digits = regexp.MustCompile(`^[0-9]+$`)
+
+// ingredientSeparators: how combinations are written in the Bulário ("+") and
+// in the CMED (";"). A comma is not a separator: it shows up inside a name.
+var ingredientSeparators = regexp.MustCompile(`\s*[+;]\s*`)
+
+// splitIngredients turns "dipirona sódica + cafeína" into two entries.
+func splitIngredients(cell string) []string {
+	var out []string
+	for _, part := range ingredientSeparators.Split(cell, -1) {
+		if part = strings.TrimSpace(part); part != "" {
+			out = append(out, part)
+		}
+	}
+	return out
+}
 
 // Parse reads the spreadsheet and validates every cell. It always returns all
 // the errors it found, not just the first one, so the person can fix the file
@@ -90,7 +120,12 @@ func Parse(r io.Reader) (*File, []RowError, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	if len(drugRows)+len(pkgRows) > MaxRows+2 {
+	// The interactions sheet is optional: older files don't have it.
+	interactionRows, err := optionalSheetRows(f, SheetInteractions)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(drugRows)+len(pkgRows)+len(interactionRows) > MaxRows+3 {
 		return nil, nil, fmt.Errorf("the spreadsheet has more than %d rows; split it into smaller files", MaxRows)
 	}
 
@@ -98,6 +133,12 @@ func Parse(r io.Reader) (*File, []RowError, error) {
 	errs = append(errs, errs2...)
 	pkgCols, errs3 := headerIndex(SheetPackages, pkgRows, PackageColumns)
 	errs = append(errs, errs3...)
+	var interactionCols map[string]int
+	if len(interactionRows) > 0 {
+		var errs4 []RowError
+		interactionCols, errs4 = headerIndex(SheetInteractions, interactionRows, InteractionColumns)
+		errs = append(errs, errs4...)
+	}
 	if len(errs) > 0 {
 		return nil, errs, nil // header is broken: reporting cell errors would only add noise
 	}
@@ -114,7 +155,7 @@ func Parse(r io.Reader) (*File, []RowError, error) {
 			Line:               line,
 			RegistrationNumber: strings.TrimSpace(get("registro_anvisa")),
 			BrandName:          strings.TrimSpace(get("nome_comercial")),
-			ActiveIngredient:   strings.TrimSpace(get("principio_ativo")),
+			ActiveIngredients:  splitIngredients(get("principio_ativo")),
 			Manufacturer:       strings.TrimSpace(get("fabricante")),
 			WhatIsItFor:        strings.TrimSpace(get("para_que_serve")),
 			Posology:           strings.TrimSpace(get("posologia")),
@@ -131,9 +172,11 @@ func Parse(r io.Reader) (*File, []RowError, error) {
 			LeafletExpedient:   strings.TrimSpace(get("bula_expediente")),
 		}
 
+		if len(d.ActiveIngredients) == 0 {
+			errs = append(errs, RowError{SheetDrugs, line, "principio_ativo", "required"})
+		}
 		for _, req := range []struct{ col, val string }{
 			{"registro_anvisa", d.RegistrationNumber},
-			{"principio_ativo", d.ActiveIngredient},
 			{"fabricante", d.Manufacturer},
 		} {
 			if req.val == "" {
@@ -236,11 +279,66 @@ func Parse(r io.Reader) (*File, []RowError, error) {
 		file.Packages = append(file.Packages, p)
 	}
 
-	if len(file.Drugs) == 0 && len(file.Packages) == 0 {
+	seenPair := map[string]int{}
+	for i, row := range dataRows(interactionRows) {
+		line := i + 2
+		if isEmptyRow(row) {
+			continue
+		}
+		get := cellGetter(row, interactionCols)
+
+		r := InteractionRow{
+			Line:           line,
+			IngredientA:    strings.TrimSpace(get("principio_a")),
+			IngredientB:    strings.TrimSpace(get("principio_b")),
+			Severity:       normalizeIngredient(get("gravidade")),
+			Description:    strings.TrimSpace(get("descricao")),
+			Recommendation: strings.TrimSpace(get("recomendacao")),
+			SourceURL:      strings.TrimSpace(get("fonte_url")),
+		}
+
+		for _, req := range []struct{ col, val string }{
+			{"principio_a", r.IngredientA},
+			{"principio_b", r.IngredientB},
+			{"descricao", r.Description},
+			{"fonte_url", r.SourceURL},
+		} {
+			if req.val == "" {
+				errs = append(errs, RowError{SheetInteractions, line, req.col, "required"})
+			}
+		}
+		if !validSeverities[r.Severity] {
+			errs = append(errs, RowError{SheetInteractions, line, "gravidade", "use grave, moderada or leve"})
+		}
+
+		a, b := normalizeIngredient(r.IngredientA), normalizeIngredient(r.IngredientB)
+		if a != "" && a == b {
+			errs = append(errs, RowError{SheetInteractions, line, "principio_b",
+				"must be a different active ingredient from principio_a"})
+		} else if a != "" && b != "" {
+			// The pair has no order: a,b and b,a are the same rule.
+			key := a + "|" + b
+			if a > b {
+				key = b + "|" + a
+			}
+			if before, dup := seenPair[key]; dup {
+				errs = append(errs, RowError{SheetInteractions, line, "principio_a",
+					fmt.Sprintf("pair repeated in the spreadsheet (also on line %d)", before)})
+			}
+			seenPair[key] = line
+		}
+
+		file.Interactions = append(file.Interactions, r)
+	}
+
+	if len(file.Drugs) == 0 && len(file.Packages) == 0 && len(file.Interactions) == 0 {
 		return nil, nil, fmt.Errorf("the spreadsheet has no data rows")
 	}
 	return file, errs, nil
 }
+
+// validSeverities mirrors the chk_severity constraint of the database.
+var validSeverities = map[string]bool{"grave": true, "moderada": true, "leve": true}
 
 // sheetRows returns every row of a sheet, or an error naming the missing sheet.
 func sheetRows(f *excelize.File, name string) ([][]string, error) {
@@ -258,6 +356,25 @@ func sheetRows(f *excelize.File, name string) ([][]string, error) {
 		return rows, nil
 	}
 	return nil, fmt.Errorf("sheet %q not found; download the template and use it", name)
+}
+
+// optionalSheetRows is sheetRows for a sheet that may not be in the file: a
+// missing sheet is not an error, it just has no rows.
+func optionalSheetRows(f *excelize.File, name string) ([][]string, error) {
+	for _, sheet := range f.GetSheetList() {
+		if normalizeHeader(sheet) == name {
+			return sheetRows(f, name)
+		}
+	}
+	return nil, nil
+}
+
+// dataRows drops the header row, and copes with a sheet that has no rows.
+func dataRows(rows [][]string) [][]string {
+	if len(rows) < 2 {
+		return nil
+	}
+	return rows[1:]
 }
 
 // headerIndex maps each expected column to its position in the header row.

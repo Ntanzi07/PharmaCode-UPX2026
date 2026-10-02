@@ -28,7 +28,7 @@ export default function DrugPicker({ drugs, value, onChange, autoFocus }: Props)
   const results = useMemo(() => {
     const words = norm(query).split(/\s+/).filter(Boolean)
     const hits = drugs.filter((d) => {
-      const text = norm(`${d.brand_name ?? ''} ${d.active_ingredient} ${d.manufacturer} ${d.registration_number}`)
+      const text = norm(`${d.brand_name ?? ''} ${d.active_ingredients.join(' ')} ${d.manufacturer} ${d.registration_number}`)
       return words.every((w) => text.includes(w))
     })
     return hits.slice(0, MAX_RESULTS)
@@ -80,8 +80,8 @@ export default function DrugPicker({ drugs, value, onChange, autoFocus }: Props)
       {selected && !open ? (
         <button type="button" className="picker-selected" onClick={() => setOpen(true)}>
           <span>
-            <strong>{selected.brand_name || selected.active_ingredient}</strong>
-            <span className="muted"> — {selected.active_ingredient} · {selected.registration_number}</span>
+            <strong>{selected.brand_name || selected.active_ingredients.join(' + ')}</strong>
+            <span className="muted"> — {selected.active_ingredients.join(' + ')} · {selected.registration_number}</span>
           </span>
           <span className="muted small">trocar</span>
         </button>
@@ -117,8 +117,8 @@ export default function DrugPicker({ drugs, value, onChange, autoFocus }: Props)
                 pick(d)
               }}
             >
-              <strong>{d.brand_name || d.active_ingredient}</strong>
-              <span className="muted"> — {d.active_ingredient}</span>
+              <strong>{d.brand_name || d.active_ingredients.join(' + ')}</strong>
+              <span className="muted"> — {d.active_ingredients.join(' + ')}</span>
               <div className="muted small">{d.manufacturer} · Reg. {d.registration_number}</div>
             </li>
           ))}

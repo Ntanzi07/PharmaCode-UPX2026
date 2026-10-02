@@ -1,13 +1,14 @@
 -- name: CreateDrug :one
-INSERT INTO drugs (registration_number, brand_name, active_ingredient, manufacturer)
-VALUES ($1, $2, $3, $4) RETURNING id;
+-- The active ingredients are not here: they live in drug_ingredients and are
+-- written right after this, inside the same transaction.
+INSERT INTO drugs (registration_number, brand_name, manufacturer)
+VALUES ($1, $2, $3) RETURNING id;
 
 -- name: UpdateDrug :execrows
 UPDATE drugs
 SET registration_number = $2,
     brand_name          = $3,
-    active_ingredient   = $4,
-    manufacturer        = $5,
+    manufacturer        = $4,
     updated_at          = NOW()
 WHERE id = $1;
 
@@ -17,14 +18,17 @@ FROM drugs
 WHERE id = $1;
 
 -- name: ListDrugs :many
-SELECT id,
-       registration_number,
-       brand_name,
-       active_ingredient,
-       manufacturer,
-       updated_at
-FROM drugs
-ORDER BY brand_name NULLS FIRST LIMIT $1
+SELECT d.id,
+       d.registration_number,
+       d.brand_name,
+       COALESCE((SELECT array_agg(ai.name ORDER BY ai.name)
+                 FROM drug_ingredients AS di
+                          JOIN active_ingredients AS ai ON ai.id = di.ingredient_id
+                 WHERE di.drug_id = d.id), '{}')::TEXT[] AS active_ingredients,
+       d.manufacturer,
+       d.updated_at
+FROM drugs AS d
+ORDER BY d.brand_name NULLS FIRST LIMIT $1
 OFFSET $2;
 
 -- name: GetSummaryByEAN :one
@@ -33,7 +37,10 @@ SELECT pe.ean,
        p.presentation_registration,
        d.registration_number,
        d.brand_name,
-       d.active_ingredient,
+       COALESCE((SELECT array_agg(ai.name ORDER BY ai.name)
+                 FROM drug_ingredients AS di
+                          JOIN active_ingredients AS ai ON ai.id = di.ingredient_id
+                 WHERE di.drug_id = d.id), '{}')::TEXT[] AS active_ingredients,
        d.manufacturer,
        s.what_is_it_for,
        s.posology,
@@ -63,7 +70,10 @@ SELECT pe.ean,
        d.id,
        d.registration_number,
        d.brand_name,
-       d.active_ingredient,
+       COALESCE((SELECT array_agg(ai.name ORDER BY ai.name)
+                 FROM drug_ingredients AS di
+                          JOIN active_ingredients AS ai ON ai.id = di.ingredient_id
+                 WHERE di.drug_id = d.id), '{}')::TEXT[] AS active_ingredients,
        d.manufacturer,
        d.updated_at,
        d.created_at

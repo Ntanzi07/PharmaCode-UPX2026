@@ -1,6 +1,7 @@
 import type {
   Drug, DrugInput, EanSummary, Package, PackageCreate, PackageUpdate,
-  ImportResult, Page, Summary, SummaryInput, SummaryListItem, User, UserCreate, UserRow, UserUpdate,
+  ImportResult, InteractionReport, InteractionRule, InteractionRuleInput,
+  Page, Summary, SummaryInput, SummaryListItem, User, UserCreate, UserRow, UserUpdate,
 } from './types'
 
 const BASE = '/api'
@@ -31,7 +32,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     throw new ApiError(res.status, text || `Erro ${res.status}`)
   }
   if (res.status === 204) return undefined as T
-  return res.json() as Promise<T>
+  // Some routes answer 200/201 with no body (saving an interaction rule, for
+  // one), so an empty answer is not an error: it just has nothing to decode.
+  const text = await res.text()
+  return (text ? JSON.parse(text) : undefined) as T
 }
 
 const page = (limit: number, offset: number) => `?limit=${limit}&offset=${offset}`
@@ -66,6 +70,17 @@ export const api = {
     me: () => request<User>('GET', '/auth/me'),
     changePassword: (current_password: string, new_password: string) =>
       request<void>('PUT', '/auth/password', { current_password, new_password }),
+  },
+  interactions: {
+    /** public route: the app sends the scanned barcodes */
+    check: (eans: string[]) => request<InteractionReport>('POST', '/interactions', { eans }),
+    rules: {
+      list: (limit = 100, offset = 0) =>
+        request<Page<InteractionRule>>('GET', '/interaction-rules' + page(limit, offset)),
+      /** creates or updates: the pair has no order */
+      save: (r: InteractionRuleInput) => request<void>('PUT', '/interaction-rules', r),
+      remove: (a: number, b: number) => request<void>('DELETE', `/interaction-rules/${a}/${b}`),
+    },
   },
   imports: {
     /** direct link: the browser downloads it with the session cookie */

@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -20,13 +21,13 @@ import (
 func newDrugHandler(t *testing.T) (*handler.DrugHandler, *testutil.FakeDrugQuerier) {
 	t.Helper()
 	fake := testutil.NewFakeDrugQuerier()
-	return handler.NewDrugHandler(service.NewDrugService(fake)), fake
+	return handler.NewDrugHandler(service.NewDrugService(fake, testutil.NewFakeDrugTx(fake))), fake
 }
 
 const validDrugBody = `{
 	"registration_number": "1023401230014",
 	"brand_name": "Dipirona Sodica",
-	"active_ingredient": "Dipirona monoidratada",
+	"active_ingredients": ["Dipirona monoidratada"],
 	"manufacturer": "Laboratorio Exemplo"
 }`
 
@@ -51,9 +52,10 @@ func TestCreateDrug(t *testing.T) {
 			name string
 			body string
 		}{
-			{"sem registration_number", `{"active_ingredient":"a","manufacturer":"b"}`},
-			{"sem active_ingredient", `{"registration_number":"1","manufacturer":"b"}`},
-			{"sem manufacturer", `{"registration_number":"1","active_ingredient":"a"}`},
+			{"sem registration_number", `{"active_ingredients":["a"],"manufacturer":"b"}`},
+			{"sem active_ingredients", `{"registration_number":"1","manufacturer":"b"}`},
+			{"active_ingredients vazio", `{"registration_number":"1","active_ingredients":[" "],"manufacturer":"b"}`},
+			{"sem manufacturer", `{"registration_number":"1","active_ingredients":["a"]}`},
 		}
 
 		for _, tt := range tests {
@@ -100,7 +102,9 @@ func TestCreateDrug(t *testing.T) {
 func TestGetSummaryByEAN(t *testing.T) {
 	setup := func(t *testing.T) (*handler.DrugHandler, *testutil.FakeDrugQuerier) {
 		h, fake := newDrugHandler(t)
-		d := fake.SeedDrug(db.ListDrugsRow{RegistrationNumber: "111", ActiveIngredient: "Dipirona"})
+		d := fake.SeedDrug(db.ListDrugsRow{RegistrationNumber: "111"})
+		id, _ := fake.UpsertIngredient(context.Background(), "Dipirona")
+		_ = fake.LinkDrugIngredient(context.Background(), db.LinkDrugIngredientParams{DrugID: d.ID, IngredientID: id})
 		fake.SeedEAN("7891234567890", d.ID)
 		return h, fake
 	}
@@ -159,7 +163,7 @@ func TestGetSummaryByEAN(t *testing.T) {
 
 		var body map[string]any
 		require.NoError(t, json.Unmarshal(rec.Body.Bytes(), &body))
-		assert.Equal(t, "Dipirona", body["active_ingredient"])
+		assert.Equal(t, []any{"Dipirona"}, body["active_ingredients"])
 		assert.Nil(t, body["what_is_it_for"])
 	})
 

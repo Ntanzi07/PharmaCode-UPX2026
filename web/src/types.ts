@@ -4,7 +4,8 @@ export type Drug = {
   id: number
   registration_number: string
   brand_name: string | null
-  active_ingredient: string
+  /** Um por princípio ativo: uma associação como a Neosaldina tem três */
+  active_ingredients: string[]
   manufacturer: string
   updated_at: string | null
 }
@@ -12,7 +13,7 @@ export type Drug = {
 export type DrugInput = {
   registration_number: string
   brand_name: string
-  active_ingredient: string
+  active_ingredients: string[]
   manufacturer: string
 }
 
@@ -35,7 +36,7 @@ export type SummaryListItem = {
   id: number
   drug_id: number
   brand_name: string | null
-  active_ingredient: string
+  active_ingredients: string[]
   what_is_it_for: string
   source_url: string
   leaflet_expedient: string | null
@@ -80,7 +81,7 @@ export type EanSummary = {
   presentation_registration: string | null
   registration_number: string
   brand_name: string | null
-  active_ingredient: string
+  active_ingredients: string[]
   manufacturer: string
   source_url: string | null
   leaflet_expedient: string | null
@@ -123,5 +124,65 @@ export type ImportResult = {
   packages: ImportCounts
   eans: ImportCounts
   summaries: ImportCounts
+  interactions: ImportCounts
   errors: ImportRowError[]
+}
+
+// ---------- interactions between the active ingredients of the scanned boxes ----------
+export type Severity = 'grave' | 'moderada' | 'leve'
+
+export const SEVERITIES: Severity[] = ['grave', 'moderada', 'leve']
+
+export type InteractionDrug = {
+  ean: string
+  drug_id: number
+  brand_name: string
+  manufacturer: string
+  active_ingredients: string[]
+}
+
+/** One of the two drugs a finding came from */
+export type DrugRef = { drug_id: number; ean: string; brand_name: string }
+
+/** One pair of active ingredients, from two different boxes, that has a rule */
+export type InteractionFinding = {
+  ingredient_a: string
+  ingredient_b: string
+  severity: Severity
+  description: string
+  recommendation: string
+  source_url: string
+  drug_a: DrugRef
+  drug_b: DrugRef
+}
+
+export type InteractionReport = {
+  drugs: InteractionDrug[]
+  /** EANs que não estão cadastrados */
+  not_found: string[]
+  findings: InteractionFinding[]
+  /** severity of the worst finding, or '' when nothing was found */
+  worst_severity: Severity | ''
+}
+
+/** One registered rule, as the panel lists it */
+export type InteractionRule = {
+  ingredient_a_id: number
+  ingredient_a: string
+  ingredient_b_id: number
+  ingredient_b: string
+  severity: Severity
+  description: string
+  recommendation: string | null
+  source_url: string
+  updated_at: string | null
+}
+
+export type InteractionRuleInput = {
+  ingredient_a: string
+  ingredient_b: string
+  severity: Severity
+  description: string
+  recommendation: string
+  source_url: string
 }

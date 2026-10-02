@@ -235,7 +235,10 @@ const listSummaries = `-- name: ListSummaries :many
 SELECT s.id,
        s.drug_id,
        d.brand_name,
-       d.active_ingredient,
+       COALESCE((SELECT array_agg(ai.name ORDER BY ai.name)
+                 FROM drug_ingredients AS di
+                          JOIN active_ingredients AS ai ON ai.id = di.ingredient_id
+                 WHERE di.drug_id = d.id), '{}')::TEXT[] AS active_ingredients,
        s.what_is_it_for,
        s.source_url,
        s.leaflet_expedient,
@@ -258,7 +261,7 @@ type ListSummariesRow struct {
 	ID                 int64              `json:"id"`
 	DrugID             int64              `json:"drug_id"`
 	BrandName          pgtype.Text        `json:"brand_name"`
-	ActiveIngredient   string             `json:"active_ingredient"`
+	ActiveIngredients  []string           `json:"active_ingredients"`
 	WhatIsItFor        string             `json:"what_is_it_for"`
 	SourceUrl          string             `json:"source_url"`
 	LeafletExpedient   pgtype.Text        `json:"leaflet_expedient"`
@@ -281,7 +284,7 @@ func (q *Queries) ListSummaries(ctx context.Context, arg ListSummariesParams) ([
 			&i.ID,
 			&i.DrugID,
 			&i.BrandName,
-			&i.ActiveIngredient,
+			&i.ActiveIngredients,
 			&i.WhatIsItFor,
 			&i.SourceUrl,
 			&i.LeafletExpedient,

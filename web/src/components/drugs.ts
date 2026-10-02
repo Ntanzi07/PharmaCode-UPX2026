@@ -3,7 +3,7 @@ import { fetchAllDrugs } from '../api'
 import type { Drug } from '../types'
 
 export const drugLabel = (d: Drug) =>
-  `${d.brand_name || d.active_ingredient} — ${d.active_ingredient} (${d.registration_number})`
+  `${d.brand_name || d.active_ingredients.join(' + ')} — ${d.active_ingredients.join(' + ')} (${d.registration_number})`
 
 /** Full drug list for the form pickers. */
 export function useDrugs() {

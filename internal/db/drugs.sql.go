@@ -12,24 +12,20 @@ import (
 )
 
 const createDrug = `-- name: CreateDrug :one
-INSERT INTO drugs (registration_number, brand_name, active_ingredient, manufacturer)
-VALUES ($1, $2, $3, $4) RETURNING id
+INSERT INTO drugs (registration_number, brand_name, manufacturer)
+VALUES ($1, $2, $3) RETURNING id
 `
 
 type CreateDrugParams struct {
 	RegistrationNumber string      `json:"registration_number"`
 	BrandName          pgtype.Text `json:"brand_name"`
-	ActiveIngredient   string      `json:"active_ingredient"`
 	Manufacturer       string      `json:"manufacturer"`
 }
 
+// The active ingredients are not here: they live in drug_ingredients and are
+// written right after this, inside the same transaction.
 func (q *Queries) CreateDrug(ctx context.Context, arg CreateDrugParams) (int64, error) {
-	row := q.db.QueryRow(ctx, createDrug,
-		arg.RegistrationNumber,
-		arg.BrandName,
-		arg.ActiveIngredient,
-		arg.Manufacturer,
-	)
+	row := q.db.QueryRow(ctx, createDrug, arg.RegistrationNumber, arg.BrandName, arg.Manufacturer)
 	var id int64
 	err := row.Scan(&id)
 	return id, err
@@ -54,7 +50,10 @@ SELECT pe.ean,
        d.id,
        d.registration_number,
        d.brand_name,
-       d.active_ingredient,
+       COALESCE((SELECT array_agg(ai.name ORDER BY ai.name)
+                 FROM drug_ingredients AS di
+                          JOIN active_ingredients AS ai ON ai.id = di.ingredient_id
+                 WHERE di.drug_id = d.id), '{}')::TEXT[] AS active_ingredients,
        d.manufacturer,
        d.updated_at,
        d.created_at
@@ -71,7 +70,7 @@ type GetDrugByEANRow struct {
 	ID                 int64              `json:"id"`
 	RegistrationNumber string             `json:"registration_number"`
 	BrandName          pgtype.Text        `json:"brand_name"`
-	ActiveIngredient   string             `json:"active_ingredient"`
+	ActiveIngredients  []string           `json:"active_ingredients"`
 	Manufacturer       string             `json:"manufacturer"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
@@ -85,7 +84,7 @@ func (q *Queries) GetDrugByEAN(ctx context.Context, ean string) (GetDrugByEANRow
 		&i.ID,
 		&i.RegistrationNumber,
 		&i.BrandName,
-		&i.ActiveIngredient,
+		&i.ActiveIngredients,
 		&i.Manufacturer,
 		&i.UpdatedAt,
 		&i.CreatedAt,
@@ -99,7 +98,10 @@ SELECT pe.ean,
        p.presentation_registration,
        d.registration_number,
        d.brand_name,
-       d.active_ingredient,
+       COALESCE((SELECT array_agg(ai.name ORDER BY ai.name)
+                 FROM drug_ingredients AS di
+                          JOIN active_ingredients AS ai ON ai.id = di.ingredient_id
+                 WHERE di.drug_id = d.id), '{}')::TEXT[] AS active_ingredients,
        d.manufacturer,
        s.what_is_it_for,
        s.posology,
@@ -131,7 +133,7 @@ type GetSummaryByEANRow struct {
 	PresentationRegistration pgtype.Text `json:"presentation_registration"`
 	RegistrationNumber       string      `json:"registration_number"`
 	BrandName                pgtype.Text `json:"brand_name"`
-	ActiveIngredient         string      `json:"active_ingredient"`
+	ActiveIngredients        []string    `json:"active_ingredients"`
 	Manufacturer             string      `json:"manufacturer"`
 	WhatIsItFor              pgtype.Text `json:"what_is_it_for"`
 	Posology                 pgtype.Text `json:"posology"`
@@ -158,7 +160,7 @@ func (q *Queries) GetSummaryByEAN(ctx context.Context, ean string) (GetSummaryBy
 		&i.PresentationRegistration,
 		&i.RegistrationNumber,
 		&i.BrandName,
-		&i.ActiveIngredient,
+		&i.ActiveIngredients,
 		&i.Manufacturer,
 		&i.WhatIsItFor,
 		&i.Posology,
@@ -179,14 +181,17 @@ func (q *Queries) GetSummaryByEAN(ctx context.Context, ean string) (GetSummaryBy
 }
 
 const listDrugs = `-- name: ListDrugs :many
-SELECT id,
-       registration_number,
-       brand_name,
-       active_ingredient,
-       manufacturer,
-       updated_at
-FROM drugs
-ORDER BY brand_name NULLS FIRST LIMIT $1
+SELECT d.id,
+       d.registration_number,
+       d.brand_name,
+       COALESCE((SELECT array_agg(ai.name ORDER BY ai.name)
+                 FROM drug_ingredients AS di
+                          JOIN active_ingredients AS ai ON ai.id = di.ingredient_id
+                 WHERE di.drug_id = d.id), '{}')::TEXT[] AS active_ingredients,
+       d.manufacturer,
+       d.updated_at
+FROM drugs AS d
+ORDER BY d.brand_name NULLS FIRST LIMIT $1
 OFFSET $2
 `
 
@@ -199,7 +204,7 @@ type ListDrugsRow struct {
 	ID                 int64              `json:"id"`
 	RegistrationNumber string             `json:"registration_number"`
 	BrandName          pgtype.Text        `json:"brand_name"`
-	ActiveIngredient   string             `json:"active_ingredient"`
+	ActiveIngredients  []string           `json:"active_ingredients"`
 	Manufacturer       string             `json:"manufacturer"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 }
@@ -217,7 +222,7 @@ func (q *Queries) ListDrugs(ctx context.Context, arg ListDrugsParams) ([]ListDru
 			&i.ID,
 			&i.RegistrationNumber,
 			&i.BrandName,
-			&i.ActiveIngredient,
+			&i.ActiveIngredients,
 			&i.Manufacturer,
 			&i.UpdatedAt,
 		); err != nil {
@@ -235,8 +240,7 @@ const updateDrug = `-- name: UpdateDrug :execrows
 UPDATE drugs
 SET registration_number = $2,
     brand_name          = $3,
-    active_ingredient   = $4,
-    manufacturer        = $5,
+    manufacturer        = $4,
     updated_at          = NOW()
 WHERE id = $1
 `
@@ -245,7 +249,6 @@ type UpdateDrugParams struct {
 	ID                 int64       `json:"id"`
 	RegistrationNumber string      `json:"registration_number"`
 	BrandName          pgtype.Text `json:"brand_name"`
-	ActiveIngredient   string      `json:"active_ingredient"`
 	Manufacturer       string      `json:"manufacturer"`
 }
 
@@ -254,7 +257,6 @@ func (q *Queries) UpdateDrug(ctx context.Context, arg UpdateDrugParams) (int64, 
 		arg.ID,
 		arg.RegistrationNumber,
 		arg.BrandName,
-		arg.ActiveIngredient,
 		arg.Manufacturer,
 	)
 	if err != nil {

@@ -14,7 +14,9 @@ type Handlers struct {
 	Summary *handler.SummaryHandler
 	Auth    *handler.AuthHandler
 	Import  *handler.ImportHandler
-	User    *handler.UserHandler
+	// Interaction serves the public duplicate-ingredient check used by the app
+	Interaction *handler.InteractionHandler
+	User        *handler.UserHandler
 }
 
 // New wires up the routes. Who can call each one:
@@ -32,6 +34,7 @@ func New(h Handlers, mw *auth.Middleware) http.Handler {
 
 	// --- public: what the app uses; only returns reviewed leaflets ---
 	mux.HandleFunc("GET /drugs/ean/{ean}", h.Drug.GetSummaryByEAN)
+	mux.HandleFunc("POST /interactions", h.Interaction.CheckInteractions)
 
 	// --- authentication ---
 	mux.HandleFunc("POST /auth/login", h.Auth.Login)
@@ -60,6 +63,11 @@ func New(h Handlers, mw *auth.Middleware) http.Handler {
 	mux.Handle("PUT /summaries/{id}", editor(h.Summary.UpdateSummary))
 	mux.Handle("PATCH /summaries/{id}/review", reviewer(h.Summary.ReviewSummary))
 	mux.Handle("DELETE /summaries/{id}", editor(h.Summary.DeleteSummary))
+
+	// --- interaction rules (clinical content: only a pharmacist writes) ---
+	mux.Handle("GET /interaction-rules", editor(h.Interaction.ListInteractionRules))
+	mux.Handle("PUT /interaction-rules", reviewer(h.Interaction.SaveInteractionRule))
+	mux.Handle("DELETE /interaction-rules/{ingredientA}/{ingredientB}", reviewer(h.Interaction.DeleteInteractionRule))
 
 	// --- spreadsheet import ---
 	mux.Handle("GET /imports/template", editor(h.Import.DownloadTemplate))

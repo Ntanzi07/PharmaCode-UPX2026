@@ -4,11 +4,12 @@ import type { Drug, DrugInput } from '../types'
 import Modal from '../components/Modal'
 import Pager from '../components/Pager'
 import Field from '../components/Field'
+import ListInput from '../components/ListInput'
 import { usePaged, PAGE_SIZE } from '../components/usePaged'
 import { useToast } from '../components/Toast'
 import { fmtDate } from '../components/format'
 
-const EMPTY: DrugInput = { registration_number: '', brand_name: '', active_ingredient: '', manufacturer: '' }
+const EMPTY: DrugInput = { registration_number: '', brand_name: '', active_ingredients: [''], manufacturer: '' }
 
 export default function DrugsPage() {
   const { rows, loading, error, offset, setOffset, reload } = usePaged(api.drugs.list)
@@ -16,7 +17,7 @@ export default function DrugsPage() {
   const notify = useToast()
 
   const remove = async (d: Drug) => {
-    if (!confirm(`Remover "${d.brand_name || d.active_ingredient}"?`)) return
+    if (!confirm(`Remover "${d.brand_name || d.active_ingredients.join(" + ")}"?`)) return
     try {
       await api.drugs.remove(d.id)
       notify('ok', 'Remédio removido')
@@ -49,7 +50,12 @@ export default function DrugsPage() {
                 <td className="muted">{d.id}</td>
                 <td className="mono">{d.registration_number}</td>
                 <td>{d.brand_name || <span className="muted">—</span>}</td>
-                <td>{d.active_ingredient}</td>
+                <td>
+                  <div className="chips">
+                    {d.active_ingredients.map((i) => <span key={i} className="chip">{i}</span>)}
+                    {d.active_ingredients.length === 0 && <span className="muted">—</span>}
+                  </div>
+                </td>
                 <td>{d.manufacturer}</td>
                 <td className="muted">{fmtDate(d.updated_at)}</td>
                 <td className="actions">
@@ -84,7 +90,7 @@ function DrugForm({ drug, onClose, onSaved }: { drug: Drug | null; onClose: () =
       ? {
           registration_number: drug.registration_number,
           brand_name: drug.brand_name ?? '',
-          active_ingredient: drug.active_ingredient,
+          active_ingredients: drug.active_ingredients.length ? drug.active_ingredients : [''],
           manufacturer: drug.manufacturer,
         }
       : EMPTY,
@@ -98,11 +104,14 @@ function DrugForm({ drug, onClose, onSaved }: { drug: Drug | null; onClose: () =
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+    const active_ingredients = [...new Set(form.active_ingredients.map((i) => i.trim()).filter(Boolean))]
+    if (active_ingredients.length === 0) return setErr('Informe pelo menos um princípio ativo')
+    const payload = { ...form, active_ingredients }
     setSaving(true)
     setErr(null)
     try {
-      if (drug) await api.drugs.update(drug.id, form)
-      else await api.drugs.create(form)
+      if (drug) await api.drugs.update(drug.id, payload)
+      else await api.drugs.create(payload)
       notify('ok', drug ? 'Remédio atualizado' : 'Remédio cadastrado')
       onSaved()
     } catch (e) {
@@ -121,8 +130,18 @@ function DrugForm({ drug, onClose, onSaved }: { drug: Drug | null; onClose: () =
         <Field label="Nome comercial">
           <input value={form.brand_name} onChange={set('brand_name')} placeholder="Ex.: Tylenol" />
         </Field>
-        <Field label="Princípio ativo" required>
-          <input value={form.active_ingredient} onChange={set('active_ingredient')} required placeholder="Ex.: Paracetamol" />
+        <Field
+          label="Princípios ativos"
+          required
+          hint="Um por campo. Associações como a Neosaldina têm vários, e é por eles que a API checa as interações entre as caixas."
+        >
+          <ListInput
+            value={form.active_ingredients}
+            onChange={(active_ingredients) => setForm({ ...form, active_ingredients })}
+            placeholder="Ex.: dipirona sódica"
+            addLabel="+ adicionar outro princípio ativo"
+            label="princípio ativo"
+          />
         </Field>
         <Field label="Fabricante" required>
           <input value={form.manufacturer} onChange={set('manufacturer')} required />

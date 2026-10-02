@@ -57,7 +57,7 @@ export default function PackagesPage() {
                   </td>
                   <td>{p.description}</td>
                   <td className="mono">{p.presentation_registration || <span className="muted">—</span>}</td>
-                  <td>{d ? d.brand_name || d.active_ingredient : <span className="muted">#{p.drug_id}</span>}</td>
+                  <td>{d ? d.brand_name || d.active_ingredients.join(' + ') : <span className="muted">#{p.drug_id}</span>}</td>
                   <td className="muted">{fmtDate(p.updated_at)}</td>
                   <td className="actions">
                     <button onClick={() => setEditing(p)}>Editar</button>

@@ -26,7 +26,7 @@ export default function SummariesPage() {
   const notify = useToast()
 
   const remove = async (s: SummaryListItem) => {
-    if (!confirm(`Remover a bula de "${s.brand_name || s.active_ingredient}"?`)) return
+    if (!confirm(`Remover a bula de "${s.brand_name || s.active_ingredients.join(" + ")}"?`)) return
     try {
       await api.summaries.remove(s.id)
       notify('ok', 'Bula removida')
@@ -57,8 +57,8 @@ export default function SummariesPage() {
               <tr key={s.id}>
                 <td className="muted">{s.id}</td>
                 <td className="brand_name">
-                  <strong>{s.brand_name || s.active_ingredient}</strong>
-                  <div className="muted small">{s.active_ingredient}</div>
+                  <strong>{s.brand_name || s.active_ingredients.join(' + ')}</strong>
+                  <div className="muted small">{s.active_ingredients.join(' + ')}</div>
                 </td>
                 <td className="purpose"><div className="clamp" title={s.what_is_it_for}>{s.what_is_it_for}</div></td>
                 <td>
@@ -247,7 +247,7 @@ function ReviewForm({ item, onClose, onSaved }: { item: SummaryListItem; onClose
   }
 
   return (
-    <Modal title={`Revisar bula de ${item.brand_name || item.active_ingredient}`} onClose={onClose}>
+    <Modal title={`Revisar bula de ${item.brand_name || item.active_ingredients.join(' + ')}`} onClose={onClose}>
       <form onSubmit={submit} className="form">
         <p>
           Confirma que você conferiu esta bula simplificada com a bula oficial?

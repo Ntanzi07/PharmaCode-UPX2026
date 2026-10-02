@@ -46,9 +46,9 @@ export default function LookupPage() {
       {result && (
         <div className="card leaflet">
           <div className="leaflet-head">
-            <h2>{result.brand_name || result.active_ingredient}</h2>
+            <h2>{result.brand_name || result.active_ingredients.join(' + ')}</h2>
             <p className="muted">
-              {result.active_ingredient} · {result.manufacturer} · Reg. {result.registration_number}
+              {result.active_ingredients.join(' + ')} · {result.manufacturer} · Reg. {result.registration_number}
             </p>
             <p className="muted small">
               EAN {result.ean} — {result.description}

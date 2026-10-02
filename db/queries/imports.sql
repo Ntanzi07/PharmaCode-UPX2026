@@ -4,13 +4,12 @@
 -- "(xmax = 0) AS created" is the Postgres trick to tell an INSERT from an UPDATE.
 
 -- name: UpsertDrug :one
-INSERT INTO drugs (registration_number, brand_name, active_ingredient, manufacturer)
-VALUES ($1, $2, $3, $4)
+INSERT INTO drugs (registration_number, brand_name, manufacturer)
+VALUES ($1, $2, $3)
 ON CONFLICT (registration_number)
-    DO UPDATE SET brand_name        = EXCLUDED.brand_name,
-                  active_ingredient = EXCLUDED.active_ingredient,
-                  manufacturer      = EXCLUDED.manufacturer,
-                  updated_at        = NOW()
+    DO UPDATE SET brand_name   = EXCLUDED.brand_name,
+                  manufacturer = EXCLUDED.manufacturer,
+                  updated_at   = NOW()
 RETURNING id, (xmax = 0) AS created;
 
 -- name: GetDrugIDByRegistration :one

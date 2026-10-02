@@ -516,6 +516,197 @@
                 }
             }
         },
+        "/interaction-rules": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interactions"
+                ],
+                "summary": "List the registered interaction rules",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Items per page (default 20, max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "How many items to skip (default 0)",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/listResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/ListIngredientInteractionsRow"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "authentication required",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "description": "The pair is identified by the two ingredient names, in any order. An ingredient that does not exist yet is created. Sending the same pair again updates the rule.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interactions"
+                ],
+                "summary": "Create or update the rule of a pair (pharmacist)",
+                "parameters": [
+                    {
+                        "description": "Interaction rule",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/interactionRuleRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "rule updated",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "201": {
+                        "description": "rule created",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid data",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "403": {
+                        "description": "insufficient permissions",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/interaction-rules/{ingredientA}/{ingredientB}": {
+            "delete": {
+                "tags": [
+                    "interactions"
+                ],
+                "summary": "Delete the rule of a pair (pharmacist)",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Id of one of the ingredients",
+                        "name": "ingredientA",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Id of the other ingredient",
+                        "name": "ingredientB",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "invalid id",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "interaction rule not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/interactions": {
+            "post": {
+                "description": "Public route used by the app: send the barcodes the person scanned and it compares every pair of active ingredients coming from different boxes against the registered rules. Unknown barcodes come back in \"not_found\" instead of failing the request. An empty \"findings\" means no rule is registered for those pairs, not that the combination is safe.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interactions"
+                ],
+                "summary": "Check interactions between the scanned boxes",
+                "parameters": [
+                    {
+                        "description": "Scanned barcodes (2 to 10)",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/interactionRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/InteractionReport"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid json / fewer than 2 or more than 10 barcodes / malformed barcode",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/packages": {
             "get": {
                 "produces": [
@@ -1299,6 +1490,23 @@
         }
     },
     "definitions": {
+        "DrugRef": {
+            "type": "object",
+            "properties": {
+                "brand_name": {
+                    "type": "string",
+                    "example": "Advil 12h"
+                },
+                "drug_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "ean": {
+                    "type": "string",
+                    "example": "7896015592752"
+                }
+            }
+        },
         "GetPackageByIdRow": {
             "type": "object",
             "properties": {
@@ -1390,8 +1598,11 @@
         "GetSummaryByEANRow": {
             "type": "object",
             "properties": {
-                "active_ingredient": {
-                    "type": "string"
+                "active_ingredients": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "adverse_effects": {
                     "type": "string"
@@ -1549,6 +1760,9 @@
                         "$ref": "#/definitions/RowError"
                     }
                 },
+                "interactions": {
+                    "$ref": "#/definitions/ImportCounts"
+                },
                 "packages": {
                     "$ref": "#/definitions/ImportCounts"
                 },
@@ -1557,11 +1771,116 @@
                 }
             }
         },
+        "InteractionDrug": {
+            "type": "object",
+            "properties": {
+                "active_ingredients": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "ibuprofeno"
+                    ]
+                },
+                "brand_name": {
+                    "type": "string",
+                    "example": "Advil 12h"
+                },
+                "drug_id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "ean": {
+                    "type": "string",
+                    "example": "7896015592752"
+                },
+                "manufacturer": {
+                    "type": "string",
+                    "example": "Pfizer"
+                }
+            }
+        },
+        "InteractionFinding": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "drug_a": {
+                    "$ref": "#/definitions/DrugRef"
+                },
+                "drug_b": {
+                    "$ref": "#/definitions/DrugRef"
+                },
+                "ingredient_a": {
+                    "type": "string",
+                    "example": "ibuprofeno"
+                },
+                "ingredient_b": {
+                    "type": "string",
+                    "example": "varfarina"
+                },
+                "recommendation": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "string",
+                    "enum": [
+                        "grave",
+                        "moderada",
+                        "leve"
+                    ],
+                    "example": "grave"
+                },
+                "source_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "InteractionReport": {
+            "type": "object",
+            "properties": {
+                "drugs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/InteractionDrug"
+                    }
+                },
+                "findings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/InteractionFinding"
+                    }
+                },
+                "not_found": {
+                    "description": "NotFound: barcodes that are not registered. They are reported instead of\nfailing the whole request, so one unknown box doesn't break the app.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "worst_severity": {
+                    "description": "Severity of the worst finding (\"grave\", \"moderada\", \"leve\"), or empty\nwhen nothing was found: it is what the app colours the screen by.",
+                    "type": "string",
+                    "enum": [
+                        "grave",
+                        "moderada",
+                        "leve",
+                        ""
+                    ],
+                    "example": "grave"
+                }
+            }
+        },
         "ListDrugsRow": {
             "type": "object",
             "properties": {
-                "active_ingredient": {
-                    "type": "string"
+                "active_ingredients": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "brand_name": {
                     "type": "string"
@@ -1573,6 +1892,38 @@
                     "type": "string"
                 },
                 "registration_number": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "ListIngredientInteractionsRow": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "ingredient_a": {
+                    "type": "string"
+                },
+                "ingredient_a_id": {
+                    "type": "integer"
+                },
+                "ingredient_b": {
+                    "type": "string"
+                },
+                "ingredient_b_id": {
+                    "type": "integer"
+                },
+                "recommendation": {
+                    "type": "string"
+                },
+                "severity": {
+                    "type": "string"
+                },
+                "source_url": {
                     "type": "string"
                 },
                 "updated_at": {
@@ -1609,8 +1960,11 @@
         "ListSummariesRow": {
             "type": "object",
             "properties": {
-                "active_ingredient": {
-                    "type": "string"
+                "active_ingredients": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "brand_name": {
                     "type": "string"
@@ -1753,17 +2107,28 @@
         "createDrugRequest": {
             "type": "object",
             "properties": {
-                "active_ingredient": {
-                    "type": "string"
+                "active_ingredients": {
+                    "description": "One entry per active ingredient: a combination drug such as Neosaldina\nhas three. Names are matched ignoring case and accents.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "dipirona sódica",
+                        "cafeína"
+                    ]
                 },
                 "brand_name": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Advil 12h"
                 },
                 "manufacturer": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "Pfizer"
                 },
                 "registration_number": {
-                    "type": "string"
+                    "type": "string",
+                    "example": "192900007"
                 }
             }
         },
@@ -1884,6 +2249,55 @@
                 "id": {
                     "type": "integer",
                     "example": 1
+                }
+            }
+        },
+        "interactionRequest": {
+            "type": "object",
+            "properties": {
+                "eans": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "7896015592752",
+                        "7891058001155"
+                    ]
+                }
+            }
+        },
+        "interactionRuleRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "example": "Juntos aumentam o risco de sangramento."
+                },
+                "ingredient_a": {
+                    "type": "string",
+                    "example": "ibuprofeno"
+                },
+                "ingredient_b": {
+                    "type": "string",
+                    "example": "varfarina"
+                },
+                "recommendation": {
+                    "type": "string",
+                    "example": "Não use junto sem orientação médica."
+                },
+                "severity": {
+                    "type": "string",
+                    "enum": [
+                        "grave",
+                        "moderada",
+                        "leve"
+                    ],
+                    "example": "grave"
+                },
+                "source_url": {
+                    "type": "string",
+                    "example": "https://consultas.anvisa.gov.br/#/bulario/"
                 }
             }
         },

@@ -289,3 +289,27 @@ a.button {
 }
 a.button:hover { background: var(--bg); }
 .card.errors { margin-top: 12px; max-height: 420px; overflow-y: auto; }
+
+/* ---------- interactions ---------- */
+.subtabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+.subtab {
+  border: 0; background: none; border-radius: 0; padding: 8px 2px; margin-right: 10px;
+  color: var(--muted); font-weight: 600; border-bottom: 2px solid transparent;
+}
+.subtab:hover { color: var(--text); background: none; }
+.subtab.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+/* The three severity levels, used on badges, alerts and cards */
+.badge.sev-grave { background: color-mix(in srgb, var(--danger) 16%, transparent); color: var(--danger); }
+.badge.sev-moderada { background: var(--warn-bg); color: var(--warn-text); }
+.badge.sev-leve { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+
+.alert.sev-moderada { background: var(--warn-bg); color: var(--warn-text); }
+.alert.sev-leve { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+
+.finding { margin-bottom: 12px; border-left: 4px solid var(--border); }
+.finding.sev-grave { border-left-color: var(--danger); }
+.finding.sev-moderada { border-left-color: var(--warn-text); }
+.finding h2 { margin: 0; font-size: 17px; }
+.finding p { margin: 8px 0; }
+.finding-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

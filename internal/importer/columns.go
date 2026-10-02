@@ -11,6 +11,8 @@ import (
 const (
 	SheetDrugs    = "remedios"
 	SheetPackages = "embalagens"
+	// SheetInteractions is optional: a file without this sheet still imports.
+	SheetInteractions = "interacoes_ativos"
 )
 
 type column struct {
@@ -50,6 +52,39 @@ var PackageColumns = []column{
 	{"ean_1", true, "Codigo de barras principal (8 a 13 digitos)"},
 	{"ean_2", false, "Segundo EAN da mesma caixa, se houver"},
 	{"ean_3", false, "Terceiro EAN da mesma caixa, se houver"},
+}
+
+// InteractionColumns is the "interacoes_ativos" sheet: one row per pair of
+// active ingredients. It is the knowledge base the scan check reads, so it does
+// not depend on the drugs of the other sheets.
+var InteractionColumns = []column{
+	{"principio_a", true, "Primeiro principio ativo do par. Ex.: ibuprofeno"},
+	{"principio_b", true, "Segundo principio ativo do par, diferente do primeiro. Ex.: varfarina"},
+	{"gravidade", true, "grave, moderada ou leve"},
+	{"descricao", true, "O que acontece ao usar os dois juntos, em linguagem simples"},
+	{"recomendacao", false, "O que a pessoa deve fazer. Ex.: nao use junto sem orientacao medica"},
+	{"fonte_url", true, "Link da fonte usada (bula, Anvisa, literatura)"},
+}
+
+// normalizeIngredient is the importer's version of the database's
+// normalize_ingredient_name(): it only serves to compare two cells of the same
+// file (same pair twice, or the same name on both sides of a pair).
+func normalizeIngredient(s string) string {
+	var b strings.Builder
+	var space bool
+	for _, r := range strings.ToLower(strings.TrimSpace(s)) {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			if space && b.Len() > 0 {
+				b.WriteRune(' ')
+			}
+			space = false
+			b.WriteRune(replaceAccent(r))
+		default:
+			space = true
+		}
+	}
+	return b.String()
 }
 
 // normalizeHeader makes header matching forgiving: ignores case, accents,

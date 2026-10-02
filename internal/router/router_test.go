@@ -33,7 +33,9 @@ func newServer(t *testing.T) (*httptest.Server, *testutil.FakeSummaryQuerier) {
 	}
 
 	drugs := testutil.NewFakeDrugQuerier()
-	drugs.SeedDrug(db.ListDrugsRow{ID: 1, RegistrationNumber: "1", ActiveIngredient: "Paracetamol", Manufacturer: "X"})
+	drugs.SeedDrug(db.ListDrugsRow{ID: 1, RegistrationNumber: "1", Manufacturer: "X"})
+	ingredientID, _ := drugs.UpsertIngredient(context.Background(), "Paracetamol")
+	_ = drugs.LinkDrugIngredient(context.Background(), db.LinkDrugIngredientParams{DrugID: 1, IngredientID: ingredientID})
 	drugs.SeedEAN("7891234567890", 1)
 	drugs.SeedReviewedSummary(1, "Dor e febre")
 	summaries := testutil.NewFakeSummaryQuerier()
@@ -42,11 +44,12 @@ func newServer(t *testing.T) (*httptest.Server, *testutil.FakeSummaryQuerier) {
 	authSvc := auth.NewService(store, time.Hour)
 	userSvc := service.NewUserService(store)
 	h := router.New(router.Handlers{
-		Drug:    handler.NewDrugHandler(service.NewDrugService(drugs)),
-		Package: handler.NewPackageHandler(service.NewPackageService(testutil.NewFakePackageQuerier())),
-		Summary: handler.NewSummaryHandler(service.NewSummaryService(summaries)),
-		Auth:    handler.NewAuthHandler(authSvc, userSvc, auth.NewLoginLimiter(5, time.Minute), false),
-		User:    handler.NewUserHandler(userSvc),
+		Drug:        handler.NewDrugHandler(service.NewDrugService(drugs, testutil.NewFakeDrugTx(drugs))),
+		Interaction: handler.NewInteractionHandler(service.NewDrugService(drugs, testutil.NewFakeDrugTx(drugs))),
+		Package:     handler.NewPackageHandler(service.NewPackageService(testutil.NewFakePackageQuerier())),
+		Summary:     handler.NewSummaryHandler(service.NewSummaryService(summaries)),
+		Auth:        handler.NewAuthHandler(authSvc, userSvc, auth.NewLoginLimiter(5, time.Minute), false),
+		User:        handler.NewUserHandler(userSvc),
 	}, auth.NewMiddleware(authSvc))
 
 	srv := httptest.NewServer(h)
@@ -91,10 +94,14 @@ func TestPermissoes(t *testing.T) {
 	reviewer := login(t, srv, "reviewer")
 	admin := login(t, srv, "admin")
 
-	drugBody := `{"registration_number":"R%s","active_ingredient":"x","manufacturer":"y"}`
+	drugBody := `{"registration_number":"R%s","active_ingredients":["x"],"manufacturer":"y"}`
+	ruleBody := `{"ingredient_a":"ibuprofeno","ingredient_b":"varfarina","severity":"grave",
+		"description":"Risco de sangramento.","source_url":"https://consultas.anvisa.gov.br/#/bulario/"}`
 
-	t.Run("a consulta do app é pública", func(t *testing.T) {
+	t.Run("as rotas do app são públicas", func(t *testing.T) {
 		assert.Equal(t, http.StatusOK, do(t, srv, "GET", "/drugs/ean/7891234567890", nil, ""))
+		assert.Equal(t, http.StatusOK, do(t, srv, "POST", "/interactions", nil,
+			`{"eans":["7891234567890","7891234567891"]}`), "a checagem de interações também é do app")
 	})
 
 	t.Run("sem login, nada além da consulta pública", func(t *testing.T) {
@@ -102,6 +109,8 @@ func TestPermissoes(t *testing.T) {
 			{"GET", "/drugs"}, {"POST", "/drugs"}, {"DELETE", "/drugs/1"},
 			{"GET", "/summaries"}, {"PATCH", "/summaries/1/review"},
 			{"GET", "/users"}, {"GET", "/auth/me"},
+			{"GET", "/interaction-rules"}, {"PUT", "/interaction-rules"},
+			{"DELETE", "/interaction-rules/1/2"},
 		} {
 			assert.Equal(t, http.StatusUnauthorized, do(t, srv, r[0], r[1], nil, "{}"), r[0]+" "+r[1])
 		}
@@ -113,6 +122,16 @@ func TestPermissoes(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, do(t, srv, "PATCH", "/summaries/1/review", editor, ""))
 		assert.Equal(t, http.StatusForbidden, do(t, srv, "GET", "/users", editor, ""))
 		assert.Zero(t, summaries.ReviewCalls)
+	})
+
+	t.Run("regras de interação: editor consulta, só o revisor cadastra", func(t *testing.T) {
+		assert.Equal(t, http.StatusOK, do(t, srv, "GET", "/interaction-rules", editor, ""))
+		assert.Equal(t, http.StatusForbidden, do(t, srv, "PUT", "/interaction-rules", editor, ruleBody))
+		assert.Equal(t, http.StatusForbidden, do(t, srv, "DELETE", "/interaction-rules/1/2", editor, ""))
+
+		assert.Equal(t, http.StatusCreated, do(t, srv, "PUT", "/interaction-rules", reviewer, ruleBody))
+		assert.Equal(t, http.StatusOK, do(t, srv, "PUT", "/interaction-rules", reviewer, ruleBody),
+			"mandar o mesmo par de novo atualiza a regra")
 	})
 
 	t.Run("reviewer revisa, e a revisão fica no nome dele", func(t *testing.T) {

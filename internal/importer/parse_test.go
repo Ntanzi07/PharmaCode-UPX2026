@@ -57,6 +57,7 @@ func TestParse_Success(t *testing.T) {
 
 	d := file.Drugs[0]
 	assert.Equal(t, "192900007", d.RegistrationNumber)
+	assert.Equal(t, []string{"ibuprofeno"}, d.ActiveIngredients)
 	assert.True(t, d.HasSummary)
 	assert.Equal(t, "2024-05-31", d.LeafletPublishedAt, "DD/MM/AAAA is converted")
 
@@ -82,9 +83,9 @@ func TestParse_RowErrors(t *testing.T) {
 			{"192900007", "Advil 12h", "ibuprofeno", "Pfizer", "Dor", "", "", ""}, // repeated + half-filled leaflet
 		},
 		"embalagens": {packageHeader,
-			{"192900007", "12345", "caixa", "7896015592752", "", ""},                        // registration too short
-			{"192900007", "1929000070069", "caixa", "789601559275X", "7896015592752", ""},   // invalid EAN + repeated EAN
-			{"000000000", "0000000000034", "caixa", "7896015592700", "", ""},                // drug not in the sheet (caught when importing)
+			{"192900007", "12345", "caixa", "7896015592752", "", ""},                      // registration too short
+			{"192900007", "1929000070069", "caixa", "789601559275X", "7896015592752", ""}, // invalid EAN + repeated EAN
+			{"000000000", "0000000000034", "caixa", "7896015592700", "", ""},              // drug not in the sheet (caught when importing)
 		},
 	}))
 
@@ -95,9 +96,9 @@ func TestParse_RowErrors(t *testing.T) {
 		assert.NotZero(t, e.Line)
 	}
 	assert.Contains(t, got, "principio_ativo")
-	assert.Contains(t, got, "registro_anvisa")   // repeated
-	assert.Contains(t, got, "posologia")         // required once the leaflet is filled
-	assert.Contains(t, got, "fonte_url")         // same
+	assert.Contains(t, got, "registro_anvisa") // repeated
+	assert.Contains(t, got, "posologia")       // required once the leaflet is filled
+	assert.Contains(t, got, "fonte_url")       // same
 	assert.Contains(t, got, "registro_apresentacao")
 	assert.Contains(t, got, "ean_1")
 	assert.Contains(t, got, "ean_2")
@@ -133,6 +134,81 @@ func TestParse_BrokenFiles(t *testing.T) {
 	})
 }
 
+var interactionHeader = []string{"principio_a", "principio_b", "gravidade", "descricao",
+	"recomendacao", "fonte_url"}
+
+func TestParse_Interactions(t *testing.T) {
+	t.Run("a aba é opcional", func(t *testing.T) {
+		file, errs, err := importer.Parse(build(t, map[string][][]string{
+			"remedios":   {drugHeader, {"192900007", "Advil 12h", "ibuprofeno", "Pfizer", "", "", "", ""}},
+			"embalagens": {packageHeader},
+		}))
+
+		require.NoError(t, err)
+		assert.Empty(t, errs)
+		assert.Empty(t, file.Interactions)
+	})
+
+	t.Run("lê o par e normaliza a gravidade", func(t *testing.T) {
+		file, errs, err := importer.Parse(build(t, map[string][][]string{
+			"remedios":   {drugHeader},
+			"embalagens": {packageHeader},
+			"interacoes_ativos": {interactionHeader,
+				{"Ibuprofeno", " varfarina ", " Grave ", "Risco de sangramento.", "Fale com o medico.", "https://x"},
+				{"", "", "", "", "", ""}, // empty rows are ignored
+			},
+		}))
+
+		require.NoError(t, err)
+		assert.Empty(t, errs)
+		require.Len(t, file.Interactions, 1)
+		r := file.Interactions[0]
+		assert.Equal(t, "Ibuprofeno", r.IngredientA)
+		assert.Equal(t, "varfarina", r.IngredientB)
+		assert.Equal(t, "grave", r.Severity)
+		assert.Equal(t, "https://x", r.SourceURL)
+	})
+
+	t.Run("a aba vale sozinha, sem remédios no arquivo", func(t *testing.T) {
+		file, errs, err := importer.Parse(build(t, map[string][][]string{
+			"remedios":   {drugHeader},
+			"embalagens": {packageHeader},
+			"interacoes_ativos": {interactionHeader,
+				{"ibuprofeno", "varfarina", "grave", "Risco de sangramento.", "", "https://x"},
+			},
+		}))
+
+		require.NoError(t, err)
+		assert.Empty(t, errs)
+		assert.Len(t, file.Interactions, 1)
+	})
+
+	t.Run("erros de linha", func(t *testing.T) {
+		_, errs, err := importer.Parse(build(t, map[string][][]string{
+			"remedios":   {drugHeader},
+			"embalagens": {packageHeader},
+			"interacoes_ativos": {interactionHeader,
+				{"ibuprofeno", "varfarina", "urgente", "x", "", "https://x"}, // unknown severity
+				{"ibuprofeno", "", "leve", "", "", ""},                       // missing b, descricao and fonte
+				{"Ibuprofeno", "ibuprofeno", "leve", "x", "", "https://x"},   // same ingredient twice
+				{"varfarina", "Ibuprofeno ", "leve", "x", "", "https://x"},   // same pair as line 2, inverted
+			},
+		}))
+
+		require.NoError(t, err)
+		got := map[string][]string{}
+		for _, e := range errs {
+			assert.Equal(t, "interacoes_ativos", e.Sheet)
+			got[e.Column] = append(got[e.Column], e.Message)
+		}
+		assert.Contains(t, got, "gravidade")
+		assert.Contains(t, got, "principio_b")
+		assert.Contains(t, got, "descricao")
+		assert.Contains(t, got, "fonte_url")
+		assert.Contains(t, got["principio_a"], "pair repeated in the spreadsheet (also on line 2)")
+	})
+}
+
 func TestBuildTemplate(t *testing.T) {
 	data, err := importer.BuildTemplate()
 	require.NoError(t, err)
@@ -143,6 +219,7 @@ func TestBuildTemplate(t *testing.T) {
 	assert.Empty(t, errs)
 	assert.Len(t, file.Drugs, 1)
 	assert.Len(t, file.Packages, 2)
+	assert.Len(t, file.Interactions, 1)
 	assert.True(t, file.Drugs[0].HasSummary)
 }
 

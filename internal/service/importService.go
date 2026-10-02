@@ -24,12 +24,13 @@ type ImportCounts struct {
 // ImportResult is what the panel shows after a preview or an import.
 type ImportResult struct {
 	// Applied is false on a preview and on anything that failed: nothing was written.
-	Applied   bool                `json:"applied"`
-	Drugs     ImportCounts        `json:"drugs"`
-	Packages  ImportCounts        `json:"packages"`
-	Eans      ImportCounts        `json:"eans"`
-	Summaries ImportCounts        `json:"summaries"`
-	Errors    []importer.RowError `json:"errors"`
+	Applied      bool                `json:"applied"`
+	Drugs        ImportCounts        `json:"drugs"`
+	Packages     ImportCounts        `json:"packages"`
+	Eans         ImportCounts        `json:"eans"`
+	Summaries    ImportCounts        `json:"summaries"`
+	Interactions ImportCounts        `json:"interactions"`
+	Errors       []importer.RowError `json:"errors"`
 }
 
 // ImportService writes a parsed spreadsheet to the database. It needs the pool
@@ -62,11 +63,13 @@ func (s *ImportService) Run(ctx context.Context, file *importer.File, dryRun boo
 		row, err := q.UpsertDrug(ctx, db.UpsertDrugParams{
 			RegistrationNumber: d.RegistrationNumber,
 			BrandName:          optionalText(d.BrandName),
-			ActiveIngredient:   d.ActiveIngredient,
 			Manufacturer:       d.Manufacturer,
 		})
 		if err != nil {
 			return result, fmt.Errorf("drug %s (line %d): %w", d.RegistrationNumber, d.Line, err)
+		}
+		if err := syncIngredients(ctx, q, row.ID, d.ActiveIngredients); err != nil {
+			return result, fmt.Errorf("ingredients of %s (line %d): %w", d.RegistrationNumber, d.Line, err)
 		}
 		drugIDs[d.RegistrationNumber] = row.ID
 		count(&result.Drugs, row.Created)
@@ -145,6 +148,35 @@ func (s *ImportService) Run(ctx context.Context, file *importer.File, dryRun boo
 			}
 			count(&result.Eans, ce.Created)
 		}
+	}
+
+	// Interaction rules don't depend on the other sheets: the pair of active
+	// ingredients is created when it is new, exactly like in the panel.
+	for _, r := range file.Interactions {
+		aID, bID, err := ingredientPair(ctx, q, r.IngredientA, r.IngredientB)
+		if errors.Is(err, ErrInvalidIngredientPair) {
+			result.Errors = append(result.Errors, importer.RowError{
+				Sheet: importer.SheetInteractions, Line: r.Line, Column: "principio_b",
+				Message: "must be a different active ingredient from principio_a",
+			})
+			continue
+		}
+		if err != nil {
+			return result, fmt.Errorf("interaction of line %d: %w", r.Line, err)
+		}
+
+		rule, err := q.UpsertIngredientInteraction(ctx, db.UpsertIngredientInteractionParams{
+			IngredientAID:  aID,
+			IngredientBID:  bID,
+			Severity:       r.Severity,
+			Description:    r.Description,
+			Recommendation: optionalText(r.Recommendation),
+			SourceUrl:      r.SourceURL,
+		})
+		if err != nil {
+			return result, fmt.Errorf("interaction of line %d: %w", r.Line, err)
+		}
+		count(&result.Interactions, rule.Created)
 	}
 
 	if len(result.Errors) > maxImportErrors {

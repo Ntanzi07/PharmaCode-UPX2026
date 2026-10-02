@@ -103,7 +103,10 @@ WHERE drug_id = $1;
 SELECT s.id,
        s.drug_id,
        d.brand_name,
-       d.active_ingredient,
+       COALESCE((SELECT array_agg(ai.name ORDER BY ai.name)
+                 FROM drug_ingredients AS di
+                          JOIN active_ingredients AS ai ON ai.id = di.ingredient_id
+                 WHERE di.drug_id = d.id), '{}')::TEXT[] AS active_ingredients,
        s.what_is_it_for,
        s.source_url,
        s.leaflet_expedient,
