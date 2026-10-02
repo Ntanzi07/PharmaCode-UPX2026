@@ -8,6 +8,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ActiveIngredient struct {
+	ID             int64              `json:"id"`
+	Name           string             `json:"name"`
+	NormalizedName pgtype.Text        `json:"normalized_name"`
+	CreatedAt      pgtype.Timestamptz `json:"created_at"`
+}
+
 type Drug struct {
 	ID                 int64              `json:"id"`
 	RegistrationNumber string             `json:"registration_number"`
@@ -16,6 +23,12 @@ type Drug struct {
 	Manufacturer       string             `json:"manufacturer"`
 	CreatedAt          pgtype.Timestamptz `json:"created_at"`
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+}
+
+type DrugIngredient struct {
+	DrugID       int64              `json:"drug_id"`
+	IngredientID int64              `json:"ingredient_id"`
+	CreatedAt    pgtype.Timestamptz `json:"created_at"`
 }
 
 type Package struct {
