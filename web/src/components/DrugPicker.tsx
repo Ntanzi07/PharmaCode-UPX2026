@@ -1,38 +1,74 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { api, errorMessage } from '../api'
 import type { Drug } from '../types'
 
 type Props = {
-  drugs: Drug[]
   value: number | ''
   onChange: (id: number | '') => void
   autoFocus?: boolean
 }
 
-/** Strips accents and case for searching: "IBUPROFÉNO" matches "ibuprofeno". */
-const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+/** How long to wait after the last keystroke before asking the API. */
+const DEBOUNCE_MS = 250
 
-const MAX_RESULTS = 50
+const MAX_RESULTS = 30
 
 /**
- * Drug search field: type part of the brand name, active ingredient
- * or registration number and pick from the list (mouse or ↑ ↓ Enter).
+ * Drug search field: type part of the brand name, active ingredient, company or
+ * registration number and pick from the list (mouse or ↑ ↓ Enter).
+ *
+ * The search runs in the database, not here. It used to download every drug and
+ * filter in the browser, which was fine for the few dozen typed by hand and
+ * became 293 requests and 6 MB once cmd/anvisa-import loaded the Anvisa base.
  */
-export default function DrugPicker({ drugs, value, onChange, autoFocus }: Props) {
-  const selected = drugs.find((d) => d.id === value)
+export default function DrugPicker({ value, onChange, autoFocus }: Props) {
+  const [selected, setSelected] = useState<Drug | null>(null)
   const [query, setQuery] = useState('')
+  const [results, setResults] = useState<Drug[]>([])
+  const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(0)
   const boxRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
 
-  const results = useMemo(() => {
-    const words = norm(query).split(/\s+/).filter(Boolean)
-    const hits = drugs.filter((d) => {
-      const text = norm(`${d.brand_name ?? ''} ${d.active_ingredients.join(' ')} ${d.manufacturer} ${d.registration_number}`)
-      return words.every((w) => text.includes(w))
-    })
-    return hits.slice(0, MAX_RESULTS)
-  }, [drugs, query])
+  // The form may open already pointing at a drug (editing a package): only the
+  // id is known, so the name is fetched on its own.
+  useEffect(() => {
+    if (value === '') {
+      setSelected(null)
+      return
+    }
+    let alive = true
+    api.drugs
+      .get(value)
+      .then((d) => alive && setSelected(d))
+      .catch(() => alive && setSelected(null))
+    return () => {
+      alive = false
+    }
+  }, [value])
+
+  // Search as you type, waiting for a pause so one word is one request.
+  useEffect(() => {
+    if (!open) return
+    let alive = true
+    setLoading(true)
+    const timer = setTimeout(() => {
+      api.drugs
+        .list(MAX_RESULTS, 0, query.trim())
+        .then(({ data }) => alive && setResults(data))
+        .catch((e) => {
+          if (!alive) return
+          setResults([])
+          console.error(errorMessage(e))
+        })
+        .finally(() => alive && setLoading(false))
+    }, DEBOUNCE_MS)
+    return () => {
+      alive = false
+      clearTimeout(timer)
+    }
+  }, [query, open])
 
   // Close when clicking outside
   useEffect(() => {
@@ -49,6 +85,7 @@ export default function DrugPicker({ drugs, value, onChange, autoFocus }: Props)
   }, [active])
 
   const pick = (d: Drug) => {
+    setSelected(d)
     onChange(d.id)
     setQuery('')
     setOpen(false)
@@ -122,7 +159,12 @@ export default function DrugPicker({ drugs, value, onChange, autoFocus }: Props)
               <div className="muted small">{d.manufacturer} · Reg. {d.registration_number}</div>
             </li>
           ))}
-          {results.length === 0 && <li className="picker-empty">Nenhum remédio encontrado.</li>}
+          {!loading && results.length === 0 && (
+            <li className="picker-empty">
+              {query.trim() ? 'Nenhum remédio encontrado.' : 'Digite para buscar.'}
+            </li>
+          )}
+          {loading && results.length === 0 && <li className="picker-empty">Buscando…</li>}
         </ul>
       )}
     </div>

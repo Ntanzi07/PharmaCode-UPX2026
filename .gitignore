@@ -2,3 +2,6 @@
 .idea/
 *.exe
 bin/
+
+# Arquivos baixados da Anvisa para o anvisa-import (dezenas de MB)
+tmp/

@@ -44,6 +44,7 @@ func New(h Handlers, mw *auth.Middleware) http.Handler {
 
 	// --- drugs ---
 	mux.Handle("GET /drugs", editor(h.Drug.ListDrugs))
+	mux.Handle("GET /drugs/{id}", editor(h.Drug.GetDrug))
 	mux.Handle("POST /drugs", editor(h.Drug.CreateDrug))
 	mux.Handle("PUT /drugs/{id}", editor(h.Drug.UpdateDrug))
 	mux.Handle("DELETE /drugs/{id}", editor(h.Drug.DeleteDrug))
@@ -66,6 +67,7 @@ func New(h Handlers, mw *auth.Middleware) http.Handler {
 
 	// --- interaction rules (clinical content: only a pharmacist writes) ---
 	mux.Handle("GET /interaction-rules", editor(h.Interaction.ListInteractionRules))
+	mux.Handle("GET /ingredients", editor(h.Interaction.SearchIngredients))
 	mux.Handle("PUT /interaction-rules", reviewer(h.Interaction.SaveInteractionRule))
 	mux.Handle("DELETE /interaction-rules/{ingredientA}/{ingredientB}", reviewer(h.Interaction.DeleteInteractionRule))
 

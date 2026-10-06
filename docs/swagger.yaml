@@ -12,6 +12,23 @@ definitions:
         example: "7896015592752"
         type: string
     type: object
+  GetDrugByIDRow:
+    properties:
+      active_ingredients:
+        items:
+          type: string
+        type: array
+      brand_name:
+        type: string
+      id:
+        type: integer
+      manufacturer:
+        type: string
+      registration_number:
+        type: string
+      updated_at:
+        type: string
+    type: object
   GetPackageByIdRow:
     properties:
       description:
@@ -306,8 +323,12 @@ definitions:
     properties:
       description:
         type: string
+      drug_brand_name:
+        type: string
       drug_id:
         type: integer
+      drug_registration:
+        type: string
       eans:
         items:
           type: string
@@ -394,6 +415,15 @@ definitions:
         type: string
       sheet:
         example: embalagens
+        type: string
+    type: object
+  SearchIngredientsRow:
+    properties:
+      drugs:
+        type: integer
+      id:
+        type: integer
+      name:
         type: string
     type: object
   User:
@@ -755,7 +785,14 @@ paths:
       - auth
   /drugs:
     get:
+      description: With "q" it searches the brand name, the company, the registration
+        number and the active ingredients, ignoring case and accents. Without it,
+        it lists everything.
       parameters:
+      - description: Search term
+        in: query
+        name: q
+        type: string
       - description: Items per page (default 20, max 100)
         in: query
         name: limit
@@ -845,6 +882,35 @@ paths:
           schema:
             type: string
       summary: Delete a drug
+      tags:
+      - drugs
+    get:
+      parameters:
+      - description: Drug id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/GetDrugByIDRow'
+        "400":
+          description: invalid id
+          schema:
+            type: string
+        "404":
+          description: drug not found
+          schema:
+            type: string
+        "500":
+          description: internal server error
+          schema:
+            type: string
+      summary: Get one drug by id
       tags:
       - drugs
     put:
@@ -1000,6 +1066,35 @@ paths:
       summary: Download the spreadsheet template
       tags:
       - imports
+  /ingredients:
+    get:
+      description: Feeds the autocomplete of the rule form. Matching ignores case
+        and accents, and each name comes with how many drugs use it.
+      parameters:
+      - description: Search term (empty lists the first names)
+        in: query
+        name: q
+        type: string
+      - description: How many to return (default 20, max 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/SearchIngredientsRow'
+            type: array
+        "401":
+          description: authentication required
+          schema:
+            type: string
+      summary: Suggest active ingredient names
+      tags:
+      - interactions
   /interaction-rules:
     get:
       parameters:

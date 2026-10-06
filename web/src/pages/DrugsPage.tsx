@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { api, errorMessage } from '../api'
 import type { Drug, DrugInput } from '../types'
 import Modal from '../components/Modal'
@@ -12,9 +12,27 @@ import { fmtDate } from '../components/format'
 const EMPTY: DrugInput = { registration_number: '', brand_name: '', active_ingredients: [''], manufacturer: '' }
 
 export default function DrugsPage() {
-  const { rows, loading, error, offset, setOffset, reload } = usePaged(api.drugs.list)
+  // The search is typed here and runs in the database: with the Anvisa base
+  // loaded there are tens of thousands of drugs, and paging 20 at a time to
+  // find one is not a way to work.
+  const [search, setSearch] = useState('')
+  const [query, setQuery] = useState('')
+  const list = useCallback(
+    (limit: number, offset: number) => api.drugs.list(limit, offset, query),
+    [query],
+  )
+  const { rows, loading, error, offset, setOffset, reload } = usePaged(list)
   const [editing, setEditing] = useState<Drug | 'new' | null>(null)
   const notify = useToast()
+
+  // Wait for a pause in the typing before asking the API.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setQuery(search.trim())
+      setOffset(0)
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [search, setOffset])
 
   const remove = async (d: Drug) => {
     if (!confirm(`Remover "${d.brand_name || d.active_ingredients.join(" + ")}"?`)) return
@@ -33,6 +51,14 @@ export default function DrugsPage() {
         <h1>Remédios</h1>
         <button className="primary" onClick={() => setEditing('new')}>+ Novo remédio</button>
       </div>
+
+      <input
+        className="search"
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="Buscar por nome, princípio ativo, fabricante ou registro…"
+        aria-label="Buscar remédio"
+      />
 
       {error && <div className="alert">{error}</div>}
 
@@ -65,7 +91,11 @@ export default function DrugsPage() {
               </tr>
             ))}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={7} className="empty">Nenhum remédio cadastrado.</td></tr>
+              <tr>
+                <td colSpan={7} className="empty">
+                  {query ? `Nenhum remédio encontrado para "${query}".` : 'Nenhum remédio cadastrado.'}
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -77,6 +107,7 @@ export default function DrugsPage() {
         <DrugForm
           drug={editing === 'new' ? null : editing}
           onClose={() => setEditing(null)}
+          onEdit={setEditing}
           onSaved={() => { setEditing(null); reload() }}
         />
       )}
@@ -84,7 +115,15 @@ export default function DrugsPage() {
   )
 }
 
-function DrugForm({ drug, onClose, onSaved }: { drug: Drug | null; onClose: () => void; onSaved: () => void }) {
+type FormProps = {
+  drug: Drug | null
+  onClose: () => void
+  /** opens an existing drug for editing, when the one being typed is already there */
+  onEdit: (drug: Drug) => void
+  onSaved: () => void
+}
+
+function DrugForm({ drug, onClose, onEdit, onSaved }: FormProps) {
   const [form, setForm] = useState<DrugInput>(
     drug
       ? {
@@ -98,6 +137,37 @@ function DrugForm({ drug, onClose, onSaved }: { drug: Drug | null; onClose: () =
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const notify = useToast()
+  // Drugs already registered that look like the one being typed. Without this,
+  // typing a name that exists just created a second row, and a repeated
+  // registration number only blew up at the database.
+  const [matches, setMatches] = useState<Drug[]>([])
+
+  const term = (form.registration_number.trim() || form.brand_name.trim()).toLowerCase()
+  useEffect(() => {
+    // Only when creating: editing a drug is supposed to match itself.
+    if (drug || term.length < 3) {
+      setMatches([])
+      return
+    }
+    let alive = true
+    const timer = setTimeout(() => {
+      api.drugs
+        .list(5, 0, term)
+        .then(({ data }) => alive && setMatches(data))
+        .catch(() => alive && setMatches([]))
+    }, 300)
+    return () => {
+      alive = false
+      clearTimeout(timer)
+    }
+  }, [term, drug])
+
+  // The registration number is unique in the database: a repeat is a conflict,
+  // not a warning. The same name is not — seven different warfarin drugs are
+  // called Marevan by different companies.
+  const sameRegistration = matches.find(
+    (m) => m.registration_number === form.registration_number.trim(),
+  )
 
   const set = (k: keyof DrugInput) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm({ ...form, [k]: e.target.value })
@@ -106,6 +176,9 @@ function DrugForm({ drug, onClose, onSaved }: { drug: Drug | null; onClose: () =
     e.preventDefault()
     const active_ingredients = [...new Set(form.active_ingredients.map((i) => i.trim()).filter(Boolean))]
     if (active_ingredients.length === 0) return setErr('Informe pelo menos um princípio ativo')
+    if (sameRegistration) {
+      return setErr(`O registro ${sameRegistration.registration_number} já está cadastrado. Abra o remédio existente para editar.`)
+    }
     const payload = { ...form, active_ingredients }
     setSaving(true)
     setErr(null)
@@ -130,6 +203,32 @@ function DrugForm({ drug, onClose, onSaved }: { drug: Drug | null; onClose: () =
         <Field label="Nome comercial">
           <input value={form.brand_name} onChange={set('brand_name')} placeholder="Ex.: Tylenol" />
         </Field>
+
+        {matches.length > 0 && (
+          <div className={sameRegistration ? 'alert' : 'alert info'}>
+            <strong>
+              {sameRegistration
+                ? 'Esse registro já está cadastrado:'
+                : 'Já existe remédio parecido cadastrado:'}
+            </strong>
+            <ul className="matches">
+              {matches.map((m) => (
+                <li key={m.id}>
+                  <span>
+                    {m.brand_name || m.active_ingredients.join(' + ')}
+                    <span className="muted"> — {m.manufacturer} · Reg. {m.registration_number}</span>
+                  </span>
+                  <button type="button" onClick={() => onEdit(m)}>Editar esse</button>
+                </li>
+              ))}
+            </ul>
+            {!sameRegistration && (
+              <small>
+                Nomes iguais de fabricantes diferentes são remédios diferentes: se for esse o caso, pode cadastrar.
+              </small>
+            )}
+          </div>
+        )}
         <Field
           label="Princípios ativos"
           required

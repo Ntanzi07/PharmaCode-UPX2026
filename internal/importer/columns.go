@@ -87,9 +87,9 @@ func normalizeIngredient(s string) string {
 	return b.String()
 }
 
-// normalizeHeader makes header matching forgiving: ignores case, accents,
+// NormalizeHeader makes header matching forgiving: ignores case, accents,
 // spaces and punctuation, so "Registro Anvisa" matches "registro_anvisa".
-func normalizeHeader(s string) string {
+func NormalizeHeader(s string) string {
 	var b strings.Builder
 	for _, r := range strings.ToLower(strings.TrimSpace(s)) {
 		switch {

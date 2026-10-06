@@ -198,5 +198,12 @@ func (f *FakePackageQuerier) GetPackageById(ctx context.Context, id int64) (db.G
 	if !ok {
 		return db.GetPackageByIdRow{}, pgx.ErrNoRows
 	}
-	return db.GetPackageByIdRow(row), nil
+	return db.GetPackageByIdRow{
+		ID:                       row.ID,
+		DrugID:                   row.DrugID,
+		Description:              row.Description,
+		PresentationRegistration: row.PresentationRegistration,
+		Eans:                     row.Eans,
+		UpdatedAt:                row.UpdatedAt,
+	}, nil
 }

@@ -20,6 +20,9 @@ export type DrugInput = {
 export type Package = {
   id: number
   drug_id: number
+  /** the drug's own fields come with the list, so the panel doesn't have to look them up */
+  drug_registration: string
+  drug_brand_name: string | null
   description: string
   /** Anvisa presentation registration (13 digits), the link to CMED */
   presentation_registration: string | null
@@ -164,6 +167,9 @@ export type InteractionReport = {
   /** severity of the worst finding, or '' when nothing was found */
   worst_severity: Severity | ''
 }
+
+/** An active ingredient name already in the database, with how many drugs use it */
+export type IngredientSuggestion = { id: number; name: string; drugs: number }
 
 /** One registered rule, as the panel lists it */
 export type InteractionRule = {

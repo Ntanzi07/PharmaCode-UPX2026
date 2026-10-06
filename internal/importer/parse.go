@@ -88,8 +88,9 @@ var digits = regexp.MustCompile(`^[0-9]+$`)
 // in the CMED (";"). A comma is not a separator: it shows up inside a name.
 var ingredientSeparators = regexp.MustCompile(`\s*[+;]\s*`)
 
-// splitIngredients turns "dipirona sódica + cafeína" into two entries.
-func splitIngredients(cell string) []string {
+// SplitIngredients turns "dipirona sódica + cafeína" into two entries. Exported
+// so every source (spreadsheet, Anvisa open data) splits combinations alike.
+func SplitIngredients(cell string) []string {
 	var out []string
 	for _, part := range ingredientSeparators.Split(cell, -1) {
 		if part = strings.TrimSpace(part); part != "" {
@@ -155,7 +156,7 @@ func Parse(r io.Reader) (*File, []RowError, error) {
 			Line:               line,
 			RegistrationNumber: strings.TrimSpace(get("registro_anvisa")),
 			BrandName:          strings.TrimSpace(get("nome_comercial")),
-			ActiveIngredients:  splitIngredients(get("principio_ativo")),
+			ActiveIngredients:  SplitIngredients(get("principio_ativo")),
 			Manufacturer:       strings.TrimSpace(get("fabricante")),
 			WhatIsItFor:        strings.TrimSpace(get("para_que_serve")),
 			Posology:           strings.TrimSpace(get("posologia")),
@@ -343,7 +344,7 @@ var validSeverities = map[string]bool{"grave": true, "moderada": true, "leve": t
 // sheetRows returns every row of a sheet, or an error naming the missing sheet.
 func sheetRows(f *excelize.File, name string) ([][]string, error) {
 	for _, sheet := range f.GetSheetList() {
-		if normalizeHeader(sheet) != name {
+		if NormalizeHeader(sheet) != name {
 			continue
 		}
 		rows, err := f.GetRows(sheet)
@@ -362,7 +363,7 @@ func sheetRows(f *excelize.File, name string) ([][]string, error) {
 // missing sheet is not an error, it just has no rows.
 func optionalSheetRows(f *excelize.File, name string) ([][]string, error) {
 	for _, sheet := range f.GetSheetList() {
-		if normalizeHeader(sheet) == name {
+		if NormalizeHeader(sheet) == name {
 			return sheetRows(f, name)
 		}
 	}
@@ -381,7 +382,7 @@ func dataRows(rows [][]string) [][]string {
 func headerIndex(sheet string, rows [][]string, cols []column) (map[string]int, []RowError) {
 	index := map[string]int{}
 	for i, cell := range rows[0] {
-		index[normalizeHeader(cell)] = i
+		index[NormalizeHeader(cell)] = i
 	}
 	var errs []RowError
 	for _, c := range cols {

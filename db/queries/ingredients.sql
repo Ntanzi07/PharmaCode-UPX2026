@@ -41,3 +41,16 @@ FROM package_eans AS pe
          JOIN packages AS p ON p.id = pe.package_id
          JOIN drugs AS d ON d.id = p.drug_id
 WHERE pe.ean = ANY (@eans::TEXT[]);
+
+-- name: SearchIngredients :many
+-- Feeds the name suggestions of the interaction rule form. Matching is on
+-- normalized_name, so typing "acido" finds "ácido acetilsalicílico", and the
+-- trigram index of 000011 is what keeps it fast over thousands of rows.
+SELECT ai.id,
+       ai.name,
+       (SELECT count(*) FROM drug_ingredients AS di WHERE di.ingredient_id = ai.id) AS drugs
+FROM active_ingredients AS ai
+WHERE @q::TEXT = ''
+   OR ai.normalized_name LIKE '%' || normalize_ingredient_name(@q) || '%'
+ORDER BY ai.name
+LIMIT $1;

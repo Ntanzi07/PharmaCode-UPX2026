@@ -313,3 +313,9 @@ a.button:hover { background: var(--bg); }
 .finding h2 { margin: 0; font-size: 17px; }
 .finding p { margin: 8px 0; }
 .finding-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* ---------- drug search and the already-registered warning ---------- */
+input.search { margin-bottom: 12px; }
+.matches { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.matches li { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.matches button { padding: 2px 10px; font-size: 13px; }

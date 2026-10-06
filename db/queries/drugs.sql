@@ -18,6 +18,13 @@ FROM drugs
 WHERE id = $1;
 
 -- name: ListDrugs :many
+-- @q is the search box of the panel: it matches the brand name, the company,
+-- the registration number and the active ingredients, ignoring case and accents
+-- (normalize_ingredient_name does that). An empty @q lists everything.
+--
+-- The search is written as IN (... UNION ...) and not as a plain OR because the
+-- OR makes the planner give up on the trigram indexes of 000011 and read the
+-- whole table: 600 ms against the Anvisa base instead of under 10.
 SELECT d.id,
        d.registration_number,
        d.brand_name,
@@ -28,8 +35,35 @@ SELECT d.id,
        d.manufacturer,
        d.updated_at
 FROM drugs AS d
+WHERE @q::TEXT = ''
+   OR d.id IN (SELECT dd.id
+               FROM drugs AS dd
+               WHERE normalize_ingredient_name(
+                             COALESCE(dd.brand_name, '') || ' ' || dd.manufacturer || ' ' ||
+                             dd.registration_number
+                     ) LIKE '%' || normalize_ingredient_name(@q) || '%'
+               UNION
+               SELECT di.drug_id
+               FROM drug_ingredients AS di
+                        JOIN active_ingredients AS ai ON ai.id = di.ingredient_id
+               WHERE ai.normalized_name LIKE '%' || normalize_ingredient_name(@q) || '%')
 ORDER BY d.brand_name NULLS FIRST LIMIT $1
 OFFSET $2;
+
+-- name: GetDrugByID :one
+-- Used when a form opens already pointing at a drug: the picker only has the
+-- id, and loading the whole list to find the name is what this change removes.
+SELECT d.id,
+       d.registration_number,
+       d.brand_name,
+       COALESCE((SELECT array_agg(ai.name ORDER BY ai.name)
+                 FROM drug_ingredients AS di
+                          JOIN active_ingredients AS ai ON ai.id = di.ingredient_id
+                 WHERE di.drug_id = d.id), '{}')::TEXT[] AS active_ingredients,
+       d.manufacturer,
+       d.updated_at
+FROM drugs AS d
+WHERE d.id = $1;
 
 -- name: GetSummaryByEAN :one
 SELECT pe.ean,

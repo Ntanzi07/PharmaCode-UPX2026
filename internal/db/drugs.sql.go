@@ -92,6 +92,45 @@ func (q *Queries) GetDrugByEAN(ctx context.Context, ean string) (GetDrugByEANRow
 	return i, err
 }
 
+const getDrugByID = `-- name: GetDrugByID :one
+SELECT d.id,
+       d.registration_number,
+       d.brand_name,
+       COALESCE((SELECT array_agg(ai.name ORDER BY ai.name)
+                 FROM drug_ingredients AS di
+                          JOIN active_ingredients AS ai ON ai.id = di.ingredient_id
+                 WHERE di.drug_id = d.id), '{}')::TEXT[] AS active_ingredients,
+       d.manufacturer,
+       d.updated_at
+FROM drugs AS d
+WHERE d.id = $1
+`
+
+type GetDrugByIDRow struct {
+	ID                 int64              `json:"id"`
+	RegistrationNumber string             `json:"registration_number"`
+	BrandName          pgtype.Text        `json:"brand_name"`
+	ActiveIngredients  []string           `json:"active_ingredients"`
+	Manufacturer       string             `json:"manufacturer"`
+	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
+}
+
+// Used when a form opens already pointing at a drug: the picker only has the
+// id, and loading the whole list to find the name is what this change removes.
+func (q *Queries) GetDrugByID(ctx context.Context, id int64) (GetDrugByIDRow, error) {
+	row := q.db.QueryRow(ctx, getDrugByID, id)
+	var i GetDrugByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.RegistrationNumber,
+		&i.BrandName,
+		&i.ActiveIngredients,
+		&i.Manufacturer,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getSummaryByEAN = `-- name: GetSummaryByEAN :one
 SELECT pe.ean,
        p.description,
@@ -191,13 +230,26 @@ SELECT d.id,
        d.manufacturer,
        d.updated_at
 FROM drugs AS d
+WHERE $3::TEXT = ''
+   OR d.id IN (SELECT dd.id
+               FROM drugs AS dd
+               WHERE normalize_ingredient_name(
+                             COALESCE(dd.brand_name, '') || ' ' || dd.manufacturer || ' ' ||
+                             dd.registration_number
+                     ) LIKE '%' || normalize_ingredient_name($3) || '%'
+               UNION
+               SELECT di.drug_id
+               FROM drug_ingredients AS di
+                        JOIN active_ingredients AS ai ON ai.id = di.ingredient_id
+               WHERE ai.normalized_name LIKE '%' || normalize_ingredient_name($3) || '%')
 ORDER BY d.brand_name NULLS FIRST LIMIT $1
 OFFSET $2
 `
 
 type ListDrugsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
+	Q      string `json:"q"`
 }
 
 type ListDrugsRow struct {
@@ -209,8 +261,15 @@ type ListDrugsRow struct {
 	UpdatedAt          pgtype.Timestamptz `json:"updated_at"`
 }
 
+// @q is the search box of the panel: it matches the brand name, the company,
+// the registration number and the active ingredients, ignoring case and accents
+// (normalize_ingredient_name does that). An empty @q lists everything.
+//
+// The search is written as IN (... UNION ...) and not as a plain OR because the
+// OR makes the planner give up on the trigram indexes of 000011 and read the
+// whole table: 600 ms against the Anvisa base instead of under 10.
 func (q *Queries) ListDrugs(ctx context.Context, arg ListDrugsParams) ([]ListDrugsRow, error) {
-	rows, err := q.db.Query(ctx, listDrugs, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listDrugs, arg.Limit, arg.Offset, arg.Q)
 	if err != nil {
 		return nil, err
 	}

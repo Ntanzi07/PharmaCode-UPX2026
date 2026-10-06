@@ -258,10 +258,42 @@ func (h *DrugHandler) DeleteDrug(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// GetDrug godoc
+// @Summary      Get one drug by id
+// @Tags         drugs
+// @Produce      json
+// @Param        id   path      int  true  "Drug id"
+// @Success      200  {object}  db.GetDrugByIDRow
+// @Failure      400  {string}  string  "invalid id"
+// @Failure      404  {string}  string  "drug not found"
+// @Failure      500  {string}  string  "internal server error"
+// @Router       /drugs/{id} [get]
+func (h *DrugHandler) GetDrug(w http.ResponseWriter, r *http.Request) {
+	id, err := strconv.ParseInt(r.PathValue("id"), 10, 64)
+	if err != nil {
+		http.Error(w, "invalid id", http.StatusBadRequest)
+		return
+	}
+
+	drug, err := h.service.GetDrug(r.Context(), id)
+	if errors.Is(err, service.ErrDrugNotFound) {
+		http.Error(w, "drug not found", http.StatusNotFound)
+		return
+	}
+	if err != nil {
+		log.Printf("failed to get drug %d: %v", id, err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, drug)
+}
+
 // ListDrugs godoc
 // @Summary      List drugs (paginated)
 // @Tags         drugs
 // @Produce      json
+// @Description  With "q" it searches the brand name, the company, the registration number and the active ingredients, ignoring case and accents. Without it, it lists everything.
+// @Param        q       query     string  false  "Search term"
 // @Param        limit   query     int     false  "Items per page (default 20, max 100)"
 // @Param        offset  query     int     false  "How many items to skip (default 0)"
 // @Success      200  {object}  listResponse{data=[]db.ListDrugsRow}
@@ -292,7 +324,7 @@ func (h *DrugHandler) ListDrugs(w http.ResponseWriter, r *http.Request) {
 		offset = int32(v)
 	}
 
-	drugs, err := h.service.ListDrugsService(r.Context(), limit, offset)
+	drugs, err := h.service.ListDrugsService(r.Context(), limit, offset, r.URL.Query().Get("q"))
 	if err != nil {
 		log.Printf("failed to get the drug list: %v", err)
 		http.Error(w, "internal server error", http.StatusInternalServerError)

@@ -102,13 +102,16 @@ func (q *Queries) GetPackageById(ctx context.Context, id int64) (GetPackageByIdR
 const listPackages = `-- name: ListPackages :many
 SELECT p.id,
        p.drug_id,
+       d.registration_number AS drug_registration,
+       d.brand_name          AS drug_brand_name,
        p.description,
        p.presentation_registration,
        COALESCE(array_agg(pe.ean ORDER BY pe.ean) FILTER (WHERE pe.ean IS NOT NULL), '{}')::text[] AS eans,
        p.updated_at
 FROM packages AS p
+         JOIN drugs AS d ON d.id = p.drug_id
          LEFT JOIN package_eans AS pe ON pe.package_id = p.id
-GROUP BY p.id
+GROUP BY p.id, d.registration_number, d.brand_name
 ORDER BY p.id LIMIT $1
 OFFSET $2
 `
@@ -121,12 +124,16 @@ type ListPackagesParams struct {
 type ListPackagesRow struct {
 	ID                       int64              `json:"id"`
 	DrugID                   int64              `json:"drug_id"`
+	DrugRegistration         string             `json:"drug_registration"`
+	DrugBrandName            pgtype.Text        `json:"drug_brand_name"`
 	Description              string             `json:"description"`
 	PresentationRegistration pgtype.Text        `json:"presentation_registration"`
 	Eans                     []string           `json:"eans"`
 	UpdatedAt                pgtype.Timestamptz `json:"updated_at"`
 }
 
+// The drug's name comes along: the panel used to look it up in a full list of
+// every drug it had downloaded, which stopped being an option at 29,000 of them.
 func (q *Queries) ListPackages(ctx context.Context, arg ListPackagesParams) ([]ListPackagesRow, error) {
 	rows, err := q.db.Query(ctx, listPackages, arg.Limit, arg.Offset)
 	if err != nil {
@@ -139,6 +146,8 @@ func (q *Queries) ListPackages(ctx context.Context, arg ListPackagesParams) ([]L
 		if err := rows.Scan(
 			&i.ID,
 			&i.DrugID,
+			&i.DrugRegistration,
+			&i.DrugBrandName,
 			&i.Description,
 			&i.PresentationRegistration,
 			&i.Eans,

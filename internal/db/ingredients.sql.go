@@ -128,6 +128,51 @@ func (q *Queries) ListIngredientsByDrugID(ctx context.Context, drugID int64) ([]
 	return items, nil
 }
 
+const searchIngredients = `-- name: SearchIngredients :many
+SELECT ai.id,
+       ai.name,
+       (SELECT count(*) FROM drug_ingredients AS di WHERE di.ingredient_id = ai.id) AS drugs
+FROM active_ingredients AS ai
+WHERE $2::TEXT = ''
+   OR ai.normalized_name LIKE '%' || normalize_ingredient_name($2) || '%'
+ORDER BY ai.name
+LIMIT $1
+`
+
+type SearchIngredientsParams struct {
+	Limit int32  `json:"limit"`
+	Q     string `json:"q"`
+}
+
+type SearchIngredientsRow struct {
+	ID    int64  `json:"id"`
+	Name  string `json:"name"`
+	Drugs int64  `json:"drugs"`
+}
+
+// Feeds the name suggestions of the interaction rule form. Matching is on
+// normalized_name, so typing "acido" finds "ácido acetilsalicílico", and the
+// trigram index of 000011 is what keeps it fast over thousands of rows.
+func (q *Queries) SearchIngredients(ctx context.Context, arg SearchIngredientsParams) ([]SearchIngredientsRow, error) {
+	rows, err := q.db.Query(ctx, searchIngredients, arg.Limit, arg.Q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []SearchIngredientsRow
+	for rows.Next() {
+		var i SearchIngredientsRow
+		if err := rows.Scan(&i.ID, &i.Name, &i.Drugs); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const upsertIngredient = `-- name: UpsertIngredient :one
 INSERT INTO active_ingredients (name)
 VALUES ($1)

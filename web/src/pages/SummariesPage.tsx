@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { api, errorMessage } from '../api'
 import { SUMMARY_TEXT_FIELDS, type SummaryInput, type SummaryListItem } from '../types'
 import Modal from '../components/Modal'
@@ -7,7 +7,7 @@ import Field from '../components/Field'
 import { usePaged, PAGE_SIZE } from '../components/usePaged'
 import { useToast } from '../components/Toast'
 import { fmtDate, fmtDay } from '../components/format'
-import { drugLabel, useDrugs } from '../components/drugs'
+import { drugLabel, useDrug } from '../components/drugs'
 import { useAuth } from '../components/auth'
 import DrugPicker from '../components/DrugPicker'
 
@@ -107,7 +107,6 @@ export default function SummariesPage() {
 }
 
 function SummaryForm({ id, onClose, onSaved }: { id?: number; onClose: () => void; onSaved: () => void }) {
-  const drugs = useDrugs()
   const [drugId, setDrugId] = useState<number | ''>('')
   const [form, setForm] = useState<SummaryInput>(EMPTY)
   const [loading, setLoading] = useState(id !== undefined)
@@ -115,7 +114,7 @@ function SummaryForm({ id, onClose, onSaved }: { id?: number; onClose: () => voi
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const notify = useToast()
-  const drug = useMemo(() => drugs.find((d) => d.id === drugId), [drugs, drugId])
+  const drug = useDrug(drugId)
 
   useEffect(() => {
     if (id === undefined) return
@@ -164,7 +163,7 @@ function SummaryForm({ id, onClose, onSaved }: { id?: number; onClose: () => voi
             {id !== undefined ? (
               <input value={drug ? drugLabel(drug) : `#${drugId}`} disabled />
             ) : (
-              <DrugPicker drugs={drugs} value={drugId} onChange={setDrugId} />
+              <DrugPicker value={drugId} onChange={setDrugId} />
             )}
           </Field>
           <div className="grid2">

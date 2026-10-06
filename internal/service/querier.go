@@ -11,6 +11,8 @@ type DrugQuerier interface {
 	UpdateDrug(ctx context.Context, arg db.UpdateDrugParams) (int64, error)
 	DeleteDrug(ctx context.Context, id int64) (int64, error)
 	ListDrugs(ctx context.Context, arg db.ListDrugsParams) ([]db.ListDrugsRow, error)
+	GetDrugByID(ctx context.Context, id int64) (db.GetDrugByIDRow, error)
+	SearchIngredients(ctx context.Context, arg db.SearchIngredientsParams) ([]db.SearchIngredientsRow, error)
 	GetDrugByEAN(ctx context.Context, ean string) (db.GetDrugByEANRow, error)
 	GetSummaryByEAN(ctx context.Context, ean string) (db.GetSummaryByEANRow, error)
 

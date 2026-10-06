@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -150,10 +151,46 @@ func TestDrugService_List(t *testing.T) {
 	}
 	svc := newDrugService(fake)
 
-	rows, err := svc.ListDrugsService(context.Background(), 2, 1)
+	rows, err := svc.ListDrugsService(context.Background(), 2, 1, "")
 
 	require.NoError(t, err)
 	assert.Len(t, rows, 2)
+}
+
+func TestDrugService_ListWithSearch(t *testing.T) {
+	fake := testutil.NewFakeDrugQuerier()
+	advil := fake.SeedDrug(db.ListDrugsRow{
+		RegistrationNumber: "192900007",
+		BrandName:          pgtype.Text{String: "Advil 12h", Valid: true},
+		Manufacturer:       "PF Consumer",
+	})
+	seedIngredients(fake, advil.ID, "ibuprofeno")
+	marevan := fake.SeedDrug(db.ListDrugsRow{
+		RegistrationNumber: "100432105",
+		BrandName:          pgtype.Text{String: "Marevan", Valid: true},
+		Manufacturer:       "Farmoquimica",
+	})
+	seedIngredients(fake, marevan.ID, "varfarina sódica")
+	svc := newDrugService(fake)
+
+	search := func(q string) []db.ListDrugsRow {
+		rows, err := svc.ListDrugsService(context.Background(), 20, 0, q)
+		require.NoError(t, err)
+		return rows
+	}
+
+	assert.Len(t, search(""), 2, "no term lists everything")
+	assert.Len(t, search("   "), 2, "a blank term is no term")
+
+	require.Len(t, search("advil"), 1, "by brand name, lowercase")
+	assert.Equal(t, "192900007", search("ADVIL")[0].RegistrationNumber, "case does not matter")
+
+	require.Len(t, search("varfarina sodica"), 1, "by ingredient, without the accent")
+	assert.Equal(t, "100432105", search("varfarina sodica")[0].RegistrationNumber)
+
+	assert.Len(t, search("1929000"), 1, "by part of the registration number")
+	assert.Len(t, search("farmoquimica"), 1, "by company")
+	assert.Empty(t, search("nao existe"), "nothing matches")
 }
 
 func TestDrugService_GetByEAN(t *testing.T) {

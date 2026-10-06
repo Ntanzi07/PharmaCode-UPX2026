@@ -1,6 +1,6 @@
 import type {
   Drug, DrugInput, EanSummary, Package, PackageCreate, PackageUpdate,
-  ImportResult, InteractionReport, InteractionRule, InteractionRuleInput,
+  ImportResult, IngredientSuggestion, InteractionReport, InteractionRule, InteractionRuleInput,
   Page, Summary, SummaryInput, SummaryListItem, User, UserCreate, UserRow, UserUpdate,
 } from './types'
 
@@ -42,7 +42,10 @@ const page = (limit: number, offset: number) => `?limit=${limit}&offset=${offset
 
 export const api = {
   drugs: {
-    list: (limit = 20, offset = 0) => request<Page<Drug>>('GET', '/drugs' + page(limit, offset)),
+    /** q searches brand name, company, registration and active ingredients */
+    list: (limit = 20, offset = 0, q = '') =>
+      request<Page<Drug>>('GET', '/drugs' + page(limit, offset) + (q ? `&q=${encodeURIComponent(q)}` : '')),
+    get: (id: number) => request<Drug>('GET', `/drugs/${id}`),
     create: (d: DrugInput) => request<{ id: number }>('POST', '/drugs', d),
     update: (id: number, d: DrugInput) => request<void>('PUT', `/drugs/${id}`, d),
     remove: (id: number) => request<void>('DELETE', `/drugs/${id}`),
@@ -74,6 +77,9 @@ export const api = {
   interactions: {
     /** public route: the app sends the scanned barcodes */
     check: (eans: string[]) => request<InteractionReport>('POST', '/interactions', { eans }),
+    /** ingredient names already in the database, for the rule form */
+    ingredients: (q = '', limit = 20) =>
+      request<IngredientSuggestion[]>('GET', `/ingredients?limit=${limit}` + (q ? `&q=${encodeURIComponent(q)}` : '')),
     rules: {
       list: (limit = 100, offset = 0) =>
         request<Page<InteractionRule>>('GET', '/interaction-rules' + page(limit, offset)),
@@ -109,16 +115,6 @@ async function uploadSpreadsheet(path: string, file: File): Promise<ImportResult
   const text = (await res.text()).trim()
   if (res.status === 401) window.dispatchEvent(new Event(SESSION_EXPIRED))
   throw new ApiError(res.status, text || `Erro ${res.status}`)
-}
-
-/** Fetches every drug (the API caps pages at 100) to fill pickers. */
-export async function fetchAllDrugs(): Promise<Drug[]> {
-  const all: Drug[] = []
-  for (let offset = 0; ; offset += 100) {
-    const { data } = await api.drugs.list(100, offset)
-    all.push(...data)
-    if (data.length < 100) return all
-  }
 }
 
 export function errorMessage(e: unknown): string {

@@ -228,6 +228,17 @@ func (s *DrugService) ListInteractionRules(ctx context.Context, limit, offset in
 	return s.queries.ListIngredientInteractions(ctx, db.ListIngredientInteractionsParams{Limit: limit, Offset: offset})
 }
 
+// SearchIngredients suggests ingredient names for the rule form, with how many
+// drugs use each one. Seeing that "varfarina sódica" has 7 drugs and
+// "varfarina" has 1 is what stops a rule being written against the name no
+// drug actually uses.
+func (s *DrugService) SearchIngredients(ctx context.Context, query string, limit int32) ([]db.SearchIngredientsRow, error) {
+	return s.queries.SearchIngredients(ctx, db.SearchIngredientsParams{
+		Q:     strings.TrimSpace(query),
+		Limit: limit,
+	})
+}
+
 // CountInteractionRules is shown in the panel: how much of the knowledge base
 // is filled in.
 func (s *DrugService) CountInteractionRules(ctx context.Context) (int64, error) {

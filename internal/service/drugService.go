@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -116,11 +117,21 @@ func (s *DrugService) DeleteDrugService(ctx context.Context, id int64) error {
 	return nil
 }
 
-func (s *DrugService) ListDrugsService(ctx context.Context, limit, offset int32) ([]db.ListDrugsRow, error) {
+func (s *DrugService) ListDrugsService(ctx context.Context, limit, offset int32, query string) ([]db.ListDrugsRow, error) {
 	return s.queries.ListDrugs(ctx, db.ListDrugsParams{
 		Limit:  limit,
 		Offset: offset,
+		Q:      strings.TrimSpace(query),
 	})
+}
+
+// GetDrug returns one drug with its active ingredients.
+func (s *DrugService) GetDrug(ctx context.Context, id int64) (db.GetDrugByIDRow, error) {
+	row, err := s.queries.GetDrugByID(ctx, id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return row, ErrDrugNotFound
+	}
+	return row, err
 }
 
 // ListIngredients returns the active ingredients of one drug.

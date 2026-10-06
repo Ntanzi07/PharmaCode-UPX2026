@@ -173,7 +173,9 @@ func (f *FakeDrugQuerier) ListDrugs(ctx context.Context, arg db.ListDrugsParams)
 	for _, id := range ids {
 		row := f.drugs[id]
 		row.ActiveIngredients = f.ingredientNames(id)
-		out = append(out, row)
+		if matchesQuery(row, arg.Q) {
+			out = append(out, row)
+		}
 	}
 
 	offset := int(arg.Offset)
@@ -185,6 +187,67 @@ func (f *FakeDrugQuerier) ListDrugs(ctx context.Context, arg db.ListDrugsParams)
 		out = out[:limit]
 	}
 	return out, nil
+}
+
+// matchesQuery mirrors the WHERE of ListDrugs: brand name, company,
+// registration and ingredients, ignoring case and accents.
+func matchesQuery(row db.ListDrugsRow, query string) bool {
+	query = normalizeIngredient(query)
+	if query == "" {
+		return true
+	}
+	text := normalizeIngredient(strings.Join(append([]string{
+		row.BrandName.String, row.Manufacturer, row.RegistrationNumber,
+	}, row.ActiveIngredients...), " "))
+	return strings.Contains(text, query)
+}
+
+func (f *FakeDrugQuerier) SearchIngredients(ctx context.Context, arg db.SearchIngredientsParams) ([]db.SearchIngredientsRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	query := normalizeIngredient(arg.Q)
+	var out []db.SearchIngredientsRow
+	for id, name := range f.names {
+		if query != "" && !strings.Contains(normalizeIngredient(name), query) {
+			continue
+		}
+		var drugs int64
+		for _, linked := range f.links {
+			for _, linkedID := range linked {
+				if linkedID == id {
+					drugs++
+				}
+			}
+		}
+		out = append(out, db.SearchIngredientsRow{ID: id, Name: name, Drugs: drugs})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	if limit := int(arg.Limit); limit > 0 && limit < len(out) {
+		out = out[:limit]
+	}
+	return out, nil
+}
+
+func (f *FakeDrugQuerier) GetDrugByID(ctx context.Context, id int64) (db.GetDrugByIDRow, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if f.GetErr != nil {
+		return db.GetDrugByIDRow{}, f.GetErr
+	}
+	d, ok := f.drugs[id]
+	if !ok {
+		return db.GetDrugByIDRow{}, pgx.ErrNoRows
+	}
+	return db.GetDrugByIDRow{
+		ID:                 d.ID,
+		RegistrationNumber: d.RegistrationNumber,
+		BrandName:          d.BrandName,
+		ActiveIngredients:  f.ingredientNames(d.ID),
+		Manufacturer:       d.Manufacturer,
+		UpdatedAt:          d.UpdatedAt,
+	}, nil
 }
 
 func (f *FakeDrugQuerier) GetDrugByEAN(ctx context.Context, ean string) (db.GetDrugByEANRow, error) {

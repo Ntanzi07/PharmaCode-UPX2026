@@ -50,15 +50,20 @@ FROM packages
 WHERE id = $1;
 
 -- name: ListPackages :many
+-- The drug's name comes along: the panel used to look it up in a full list of
+-- every drug it had downloaded, which stopped being an option at 29,000 of them.
 SELECT p.id,
        p.drug_id,
+       d.registration_number AS drug_registration,
+       d.brand_name          AS drug_brand_name,
        p.description,
        p.presentation_registration,
        COALESCE(array_agg(pe.ean ORDER BY pe.ean) FILTER (WHERE pe.ean IS NOT NULL), '{}')::text[] AS eans,
        p.updated_at
 FROM packages AS p
+         JOIN drugs AS d ON d.id = p.drug_id
          LEFT JOIN package_eans AS pe ON pe.package_id = p.id
-GROUP BY p.id
+GROUP BY p.id, d.registration_number, d.brand_name
 ORDER BY p.id LIMIT $1
 OFFSET $2;
 

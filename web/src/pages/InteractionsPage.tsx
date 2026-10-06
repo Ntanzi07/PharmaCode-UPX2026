@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
-import { api, errorMessage, fetchAllDrugs } from '../api'
+import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { api, errorMessage } from '../api'
 import {
   SEVERITIES,
   type InteractionReport, type InteractionRule, type InteractionRuleInput, type Severity,
@@ -7,6 +7,7 @@ import {
 import ListInput from '../components/ListInput'
 import Modal from '../components/Modal'
 import Field from '../components/Field'
+import IngredientInput from '../components/IngredientInput'
 import { useAuth } from '../components/auth'
 import { useToast } from '../components/Toast'
 
@@ -165,8 +166,6 @@ function RulesPanel() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [editing, setEditing] = useState<InteractionRule | 'new' | null>(null)
-  // Names already in the database, suggested in the form
-  const [known, setKnown] = useState<string[]>([])
 
   const reload = useCallback(async () => {
     setLoading(true)
@@ -182,18 +181,6 @@ function RulesPanel() {
   }, [])
 
   useEffect(() => { reload() }, [reload])
-
-  useEffect(() => {
-    if (!mayEdit) return
-    fetchAllDrugs()
-      .then((drugs) => setKnown([...new Set(drugs.flatMap((d) => d.active_ingredients))].sort()))
-      .catch(() => setKnown([]))
-  }, [mayEdit])
-
-  const suggestions = useMemo(
-    () => [...new Set([...known, ...rules.flatMap((r) => [r.ingredient_a, r.ingredient_b])])].sort(),
-    [known, rules],
-  )
 
   const remove = async (r: InteractionRule) => {
     if (!confirm(`Remover a regra "${r.ingredient_a} + ${r.ingredient_b}"?`)) return
@@ -257,7 +244,6 @@ function RulesPanel() {
       {editing && (
         <RuleForm
           rule={editing === 'new' ? null : editing}
-          suggestions={suggestions}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); reload() }}
         />
@@ -271,9 +257,8 @@ const EMPTY: InteractionRuleInput = {
   description: '', recommendation: '', source_url: '',
 }
 
-function RuleForm({ rule, suggestions, onClose, onSaved }: {
+function RuleForm({ rule, onClose, onSaved }: {
   rule: InteractionRule | null
-  suggestions: string[]
   onClose: () => void
   onSaved: () => void
 }) {
@@ -314,37 +299,26 @@ function RuleForm({ rule, suggestions, onClose, onSaved }: {
   return (
     <Modal title={rule ? 'Editar regra' : 'Nova regra'} onClose={onClose} wide>
       <form onSubmit={submit} className="form">
-        <datalist id="ingredient-options">
-          {suggestions.map((s) => <option key={s} value={s} />)}
-        </datalist>
-
         <div className="grid2">
           <Field label="Princípio ativo A" required>
-            <input
+            {/* Editing is editing the rule of that pair: changing a name here
+                would create a different rule instead of renaming this one. */}
+            <IngredientInput
               value={form.ingredient_a}
-              onChange={(e) => set('ingredient_a', e.target.value)}
-              list="ingredient-options"
-              required
-              // Editing is editing the rule of that pair: changing a name here
-              // would create a different rule instead of renaming this one.
+              onChange={(v) => set('ingredient_a', v)}
               disabled={!!rule}
+              required
             />
           </Field>
           <Field label="Princípio ativo B" required>
-            <input
+            <IngredientInput
               value={form.ingredient_b}
-              onChange={(e) => set('ingredient_b', e.target.value)}
-              list="ingredient-options"
-              required
+              onChange={(v) => set('ingredient_b', v)}
               disabled={!!rule}
+              required
             />
           </Field>
         </div>
-        {!rule && (
-          <small className="hint">
-            Princípio ativo que ainda não existe é criado automaticamente, com o nome escrito aqui.
-          </small>
-        )}
 
         <Field label="Gravidade" required>
           <select value={form.severity} onChange={(e) => set('severity', e.target.value as Severity)}>

@@ -104,6 +104,60 @@ interaction knowledge base described below, and an active ingredient written
 there that does not exist yet is created. A file without that sheet still
 imports.
 
+### Loading the whole Anvisa base
+
+The spreadsheet is for the drugs you type in by hand. To fill the database with
+everything Anvisa publishes, `cmd/anvisa-import` reads two open data files and
+applies them with the same upsert, so running it again updates instead of
+duplicating:
+
+| File | Fills |
+|---|---|
+| [`DADOS_ABERTOS_MEDICAMENTOS.csv`](https://dados.anvisa.gov.br/dados/DADOS_ABERTOS_MEDICAMENTOS.csv) | `drugs`, `active_ingredients`, `drug_ingredients` |
+| [`TA_PRECO_MEDICAMENTO.csv`](https://dados.anvisa.gov.br/dados/TA_PRECO_MEDICAMENTO.csv) (the CMED list) | `packages`, `package_eans` |
+
+```bash
+go run ./cmd/anvisa-import --dry-run    # reads, counts and rolls back
+go run ./cmd/anvisa-import              # writes
+```
+
+It downloads the files itself. Behind a network that blocks Anvisa, download
+them in the browser and pass the paths — the CMED list is also accepted as the
+`.xlsx` published on gov.br, which is converted on the way in:
+
+```bash
+go run ./cmd/anvisa-import \
+  --medicamentos tmp/DADOS_ABERTOS_MEDICAMENTOS.csv \
+  --precos       tmp/lista_pmc.xlsx
+```
+
+Flags: `--dry-run`, `--only-valid` (skip registrations that are not active),
+`--skip-packages`, `--chunk` (drugs per transaction, 500 by default).
+
+On the full base this takes about half a minute and brings roughly 29,000 drugs,
+4,200 distinct active ingredients, 25,500 packages and 26,700 barcodes. The work
+is split into one transaction per 500 drugs, each carrying its own packages, so
+Ctrl+C stops it cleanly and running it again carries on.
+
+**It does not bring leaflets.** Anvisa publishes those as one PDF per product,
+and in this project the simplified leaflet is written by the team and reviewed
+by a pharmacist. The command fills in the part that is only typing, so the app
+can turn a scanned barcode into a drug; the leaflet is still the work.
+
+Three things the real files do that the command has to handle, and that are
+worth knowing when reading its output:
+
+- **A quarter of the drugs file has no registration number.** Those are low risk
+  products, notified instead of registered. They are skipped without a word.
+- **Combinations are separated by commas**, not by `+` as in our spreadsheet:
+  `cafeína anidra, dipirona monoidratada, mucato de isometepteno`. This file is
+  split on commas as well; the spreadsheet is not, because a comma can sit
+  inside a name typed by hand.
+- **The same barcode is printed on two registrations** of the same product, some
+  170 times: when a registration is renewed or transferred, the old one stays in
+  the list with the same box. `package_eans.ean` is unique, so the barcode is
+  kept on the registration Anvisa still marks as active.
+
 ## Permissions
 
 | Role | Can |
@@ -114,6 +168,39 @@ imports.
 | `admin` | everything a reviewer can + manage users |
 
 Editing the text of a reviewed leaflet removes the review: the leaflet leaves the app until it is reviewed again.
+
+## Searching
+
+Everything that looks a drug up — the search box of the **Remédios** screen, the
+picker of the **Embalagens** and **Bulas** forms, the "already registered"
+warning — goes through one route:
+
+```
+GET /drugs?q=varfarina%20sodica
+```
+
+It matches the brand name, the company, the registration number and the active
+ingredients, ignoring case and accents (the same `normalize_ingredient_name()`
+the ingredients are keyed by), so "acido" finds "ácido acetilsalicílico".
+
+The search runs in the database on purpose. The panel used to download every
+drug and filter in the browser, which was fine for the few dozen typed by hand
+and became 293 requests and 6 MB per form once the Anvisa base was loaded.
+Migration 000011 adds the trigram indexes that make it answer in milliseconds;
+without them the same query takes about 600 ms over 29,000 drugs.
+
+`GET /ingredients?q=` does the same for active ingredient names and returns how
+many drugs use each one. That count is what the interaction rule form shows
+while you type, and it is there for one reason:
+
+```
+varfarina                     1 remédio
+varfarina sódica              7 remédios   <- Marevan
+varfarina sódica cristalina   1 remédio
+```
+
+A rule only fires for the exact name it was written with, so seeing the counts
+is what stops one being written against the spelling no drug actually uses.
 
 ## Interactions between active ingredients
 
@@ -157,10 +244,20 @@ in bulk through the `interacoes_ativos` sheet of the import template:
 | `PUT /interaction-rules` | `reviewer` | creates or updates the rule of a pair, by ingredient name |
 | `DELETE /interaction-rules/{a}/{b}` | `reviewer` | deletes it, by ingredient id, in any order |
 
-Known limitation: the pair is matched by normalized name, so a salt is a
-different ingredient. A rule written for "varfarina" does not fire for a drug
-registered as "varfarina sódica" — write the rule with the same name used in the
-drugs, or register both pairs.
+Known limitation: the pair is matched by the whole normalized name, so a salt is
+a different ingredient. Loading the Anvisa base (below) makes this concrete — it
+brings warfarin under three names:
+
+```
+varfarina                     1 drug
+varfarina sódica              7 drugs   <- Marevan is here
+varfarina sódica cristalina   1 drug
+```
+
+A rule written for "varfarina" does not fire for Marevan. Until the matching
+understands salts, write the rule with the name the drugs actually use (the
+**Interações** form suggests the names already in the database), or register the
+pair more than once.
 
 ## Where the data comes from
 
@@ -183,6 +280,77 @@ Search by the drug name. The product detail page fills in the **Remédios** (dru
 | Leaflet publication date | `summaries.leaflet_published_at` | YYYY-MM-DD |
 
 The filing number and the date tell **which version of the leaflet** was summarized. When Anvisa publishes a new leaflet, you can see which summaries are out of date.
+
+#### How the active ingredient is registered
+
+In the Bulário the *Princípio Ativo* is **one text field**, and for a combination
+drug it holds everything at once:
+
+```
+DIPIRONA SÓDICA + MUCATO DE ISOMETEPTENO + CAFEÍNA     (Neosaldina, in the Bulário)
+```
+
+In the API that is not one value. The field is split and each ingredient becomes
+its own record, because the interaction check works on **ingredient ids**, not on
+text. Three tables are involved:
+
+| Table | What it holds |
+|---|---|
+| `active_ingredients` | the catalogue: one row per ingredient, however many drugs use it |
+| `drug_ingredients` | the link `(drug_id, ingredient_id)`; a combination drug is one row per ingredient |
+| `ingredient_interactions` | the rules, one per pair of ingredients (see the section above) |
+
+`active_ingredients` has two columns for the name, and that is the heart of it:
+
+- **`name`** — how it is written, and what the panel and the app show.
+- **`normalized_name`** — what the database matches on: `lower()` + `unaccent()` +
+  single spaces, by `normalize_ingredient_name()`. It is a **generated column with a
+  UNIQUE index**, so it is computed by the database, never sent by the application:
+  there is no way to store a name whose key disagrees with the rule.
+
+So "Dipirona Sódica", "dipirona sodica" and "dipirona  sódica" all land on the
+**same row**, and the first spelling registered is the one everyone sees.
+
+**What happens when a drug is saved** (panel, `POST`/`PUT /drugs` or spreadsheet —
+all three go through the same code, inside one transaction):
+
+1. Each name is upserted by `normalized_name` (`UpsertIngredient`): one that
+   already exists gives back its id, a new one is created.
+2. The link to the drug is inserted, `ON CONFLICT DO NOTHING` — saving the same
+   drug twice changes nothing.
+3. Links that are no longer in the list are deleted (`DeleteDrugIngredientsNotIn`).
+
+Taking an ingredient out of the form removes the **link**, never the ingredient:
+other drugs may use it, and `drug_ingredients.ingredient_id` is `ON DELETE
+RESTRICT` exactly to stop a cleanup from silently breaking the rules of several
+drugs at once.
+
+**Where the split happens**, depending on how you register:
+
+| Registering by | What you type | How it is split |
+|---|---|---|
+| Panel (**Remédios** screen) | one field per ingredient, `+ adicionar` for the next | nothing to split: each field is one ingredient |
+| Spreadsheet (`principio_ativo` column) | the whole thing in one cell | split on `+` and `;`. A **comma is not** a separator: it shows up inside names |
+| API (`POST`/`PUT /drugs`) | `"active_ingredients": ["dipirona sódica", "cafeína"]` | already a list |
+
+So the Neosaldina cell above becomes:
+
+```
+active_ingredients          drug_ingredients
+ id  name                    drug_id  ingredient_id
+  7  dipirona sódica            12          7
+  8  mucato de isometepteno     12          8
+  9  cafeína                    12          9
+```
+
+And a second drug that also has dipirona reuses row 7 instead of creating a
+fourth one — which is what makes a rule written once for *dipirona × ciclosporina*
+fire for every drug that contains it.
+
+One thing to watch: the match is on the **whole normalized name**, so a salt is a
+different ingredient. "varfarina" and "varfarina sódica" are two rows, and a rule
+written for one does not fire for the other. Write the ingredient the same way in
+the drugs and in the rules.
 
 The text fields of the simplified leaflet (`what_is_it_for`, `posology`, `missed_dose`, `warnings`, `contraindications`, `adverse_effects`, etc.) are written by the team from the sections of the PDF.
 

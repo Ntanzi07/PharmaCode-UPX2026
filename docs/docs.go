@@ -153,6 +153,7 @@ const docTemplate = `{
         },
         "/drugs": {
             "get": {
+                "description": "With \"q\" it searches the brand name, the company, the registration number and the active ingredients, ignoring case and accents. Without it, it lists everything.",
                 "produces": [
                     "application/json"
                 ],
@@ -161,6 +162,12 @@ const docTemplate = `{
                 ],
                 "summary": "List drugs (paginated)",
                 "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search term",
+                        "name": "q",
+                        "in": "query"
+                    },
                     {
                         "type": "integer",
                         "description": "Items per page (default 20, max 100)",
@@ -308,6 +315,50 @@ const docTemplate = `{
             }
         },
         "/drugs/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "drugs"
+                ],
+                "summary": "Get one drug by id",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Drug id",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/GetDrugByIDRow"
+                        }
+                    },
+                    "400": {
+                        "description": "invalid id",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "drug not found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "internal server error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
             "put": {
                 "consumes": [
                     "application/json"
@@ -512,6 +563,49 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "type": "file"
+                        }
+                    },
+                    "401": {
+                        "description": "authentication required",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/ingredients": {
+            "get": {
+                "description": "Feeds the autocomplete of the rule form. Matching ignores case and accents, and each name comes with how many drugs use it.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "interactions"
+                ],
+                "summary": "Suggest active ingredient names",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Search term (empty lists the first names)",
+                        "name": "q",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "How many to return (default 20, max 100)",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/SearchIngredientsRow"
+                            }
                         }
                     },
                     "401": {
@@ -1514,6 +1608,32 @@ const docTemplate = `{
                 }
             }
         },
+        "GetDrugByIDRow": {
+            "type": "object",
+            "properties": {
+                "active_ingredients": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "brand_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "manufacturer": {
+                    "type": "string"
+                },
+                "registration_number": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "GetPackageByIdRow": {
             "type": "object",
             "properties": {
@@ -1944,8 +2064,14 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "drug_brand_name": {
+                    "type": "string"
+                },
                 "drug_id": {
                     "type": "integer"
+                },
+                "drug_registration": {
+                    "type": "string"
                 },
                 "eans": {
                     "type": "array",
@@ -2072,6 +2198,20 @@ const docTemplate = `{
                 "sheet": {
                     "type": "string",
                     "example": "embalagens"
+                }
+            }
+        },
+        "SearchIngredientsRow": {
+            "type": "object",
+            "properties": {
+                "drugs": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "name": {
+                    "type": "string"
                 }
             }
         },

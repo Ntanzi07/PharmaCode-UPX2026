@@ -114,6 +114,39 @@ func (h *InteractionHandler) ListInteractionRules(w http.ResponseWriter, r *http
 	writeJSON(w, http.StatusOK, listResponse{Data: rules, Limit: limit, Offset: offset})
 }
 
+// SearchIngredients godoc
+// @Summary      Suggest active ingredient names
+// @Description  Feeds the autocomplete of the rule form. Matching ignores case and accents, and each name comes with how many drugs use it.
+// @Tags         interactions
+// @Produce      json
+// @Param        q      query     string  false  "Search term (empty lists the first names)"
+// @Param        limit  query     int     false  "How many to return (default 20, max 100)"
+// @Success      200  {array}   db.SearchIngredientsRow
+// @Failure      401  {string}  string  "authentication required"
+// @Router       /ingredients [get]
+func (h *InteractionHandler) SearchIngredients(w http.ResponseWriter, r *http.Request) {
+	limit := int32(20)
+	if s := r.URL.Query().Get("limit"); s != "" {
+		v, err := strconv.ParseInt(s, 10, 32)
+		if err != nil || v <= 0 {
+			http.Error(w, "invalid limit", http.StatusBadRequest)
+			return
+		}
+		limit = int32(min(v, 100))
+	}
+
+	names, err := h.service.SearchIngredients(r.Context(), r.URL.Query().Get("q"), limit)
+	if err != nil {
+		log.Printf("failed to search ingredients: %v", err)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
+		return
+	}
+	if names == nil {
+		names = []db.SearchIngredientsRow{}
+	}
+	writeJSON(w, http.StatusOK, names)
+}
+
 // SaveInteractionRule godoc
 // @Summary      Create or update the rule of a pair (pharmacist)
 // @Description  The pair is identified by the two ingredient names, in any order. An ingredient that does not exist yet is created. Sending the same pair again updates the rule.
